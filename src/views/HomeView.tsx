@@ -1,5 +1,5 @@
 import React from 'react';
-import { Utensils, Carrot, LayoutGrid, RefreshCw, ChevronRight, MoreVertical } from 'lucide-react';
+import { Utensils, Carrot, LayoutGrid, RefreshCw, ChevronRight, MoreVertical, ImageOff } from 'lucide-react';
 import { Category, Recipe } from '../types';
 
 interface HomeViewProps {
@@ -163,11 +163,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
               className="flex items-center justify-between p-3 rounded-[20px] bg-white border border-slate-100 shadow-2xs hover:shadow-md transition-all cursor-pointer group"
             >
               <div className="flex items-center gap-3">
-                <img
-                  src={recipe.imageUrl}
-                  alt={recipe.title}
-                  className="w-14 h-14 rounded-2xl object-cover border border-slate-100 group-hover:scale-105 transition-transform"
-                />
+                {recipe.imageUrl ? (
+                  <img
+                    src={recipe.imageUrl}
+                    alt={recipe.title}
+                    className="w-14 h-14 rounded-2xl object-cover border border-slate-100 group-hover:scale-105 transition-transform"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200/80 flex flex-col items-center justify-center text-slate-400 group-hover:scale-105 transition-transform flex-shrink-0">
+                    <ImageOff className="w-4 h-4 opacity-40 mb-0.5 text-slate-500" />
+                    <span className="text-[8px] font-extrabold text-slate-500">No image</span>
+                  </div>
+                )}
                 <div>
                   <h4 className="font-bold text-slate-800 text-sm group-hover:text-[#FF8FB8] transition-colors">
                     {recipe.title}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Plus, Trash2, Check, Sparkles, Search, Carrot, X } from 'lucide-react';
+import { Upload, Plus, Trash2, Check, Sparkles, Search, Carrot, X, ImageOff } from 'lucide-react';
 import { Category, IngredientItem, Recipe, RecipeIngredient, CookingStep } from '../types';
 
 interface AddEditRecipeViewProps {
@@ -29,11 +29,26 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
   const [title, setTitle] = useState(recipeToEdit?.title || '');
   const [category, setCategory] = useState(recipeToEdit?.category || categories[0]?.name || 'Món chính');
   const [description, setDescription] = useState(recipeToEdit?.description || '');
-  const [imageUrl, setImageUrl] = useState(
-    recipeToEdit?.imageUrl || PRESET_DISH_IMAGES[0]
-  );
+  const [imageUrl, setImageUrl] = useState(recipeToEdit?.imageUrl || '');
   const [isActive, setIsActive] = useState(recipeToEdit?.isActive ?? true);
   const [portionLabel, setPortionLabel] = useState(recipeToEdit?.portionLabel || '1 phần');
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Dung lượng ảnh tối đa là 5MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setImageUrl(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>(
     recipeToEdit?.ingredients || [
@@ -170,37 +185,73 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="p-4 space-y-5 pb-28 animate-fade-in">
-      {/* Upload Image Box Screen 4 */}
+      {/* Upload Image Box */}
       <div>
-        <label className="block text-xs font-bold text-slate-700 mb-1.5">
-          Ảnh món ăn
-        </label>
-        <div className="relative w-full h-44 rounded-3xl border-2 border-dashed border-pink-200 bg-pink-50/40 overflow-hidden flex flex-col items-center justify-center p-4 text-center cursor-pointer group hover:bg-pink-50 transition-colors">
-          {imageUrl ? (
-            <img src={imageUrl} alt="Preview" className="w-full h-full object-cover rounded-2xl" />
-          ) : (
-            <div className="flex flex-col items-center text-slate-400">
-              <Upload className="w-8 h-8 text-[#FF8FB8] mb-1 group-hover:scale-110 transition-transform" />
-              <span className="font-bold text-sm text-slate-700">Thêm ảnh món ăn</span>
-              <span className="text-xs text-slate-400 mt-0.5">Chạm để chọn hoặc thay đổi</span>
-            </div>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="block text-xs font-bold text-slate-700">
+            Ảnh món ăn
+          </label>
+          {imageUrl && (
+            <button
+              type="button"
+              onClick={() => setImageUrl('')}
+              className="text-xs font-bold text-rose-500 hover:underline flex items-center gap-1"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Xóa ảnh (No image)</span>
+            </button>
           )}
         </div>
 
-        {/* Preset image selector */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar mt-2">
-          {PRESET_DISH_IMAGES.map((img, idx) => (
-            <button
-              type="button"
-              key={idx}
-              onClick={() => setImageUrl(img)}
-              className={`w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden border-2 transition-all ${
-                imageUrl === img ? 'border-[#FF8FB8] scale-105 shadow-sm' : 'border-transparent opacity-60'
-              }`}
-            >
-              <img src={img} alt="Preset" className="w-full h-full object-cover" />
-            </button>
-          ))}
+        <div className="relative w-full h-44 rounded-3xl border-2 border-dashed border-pink-200 bg-pink-50/40 overflow-hidden flex flex-col items-center justify-center p-3 text-center group hover:bg-pink-50 transition-colors">
+          {imageUrl ? (
+            <div className="relative w-full h-full">
+              <img src={imageUrl} alt="Preview" className="w-full h-full object-cover rounded-2xl" />
+              <label className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer rounded-2xl">
+                <Upload className="w-6 h-6 mb-1" />
+                <span className="text-xs font-bold">Thay đổi ảnh</span>
+                <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+              </label>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center text-slate-400 cursor-pointer w-full h-full">
+              <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-[#FF8FB8] mb-1.5 group-hover:scale-110 transition-transform">
+                <Upload className="w-5 h-5" />
+              </div>
+              <span className="font-bold text-xs text-slate-700">Tải ảnh lên từ máy / điện thoại</span>
+              <span className="text-[11px] text-slate-400 mt-0.5">Nhấp vào đây để chọn file ảnh (Nếu không tải sẽ để "No image")</span>
+              <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+            </label>
+          )}
+        </div>
+
+        {/* URL input and preset image options */}
+        <div className="mt-2 space-y-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              placeholder="Hoặc dán URL liên kết ảnh (https://...)"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8]"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-1">
+            <span className="text-[11px] font-bold text-slate-400 flex-shrink-0">Ảnh mẫu:</span>
+            {PRESET_DISH_IMAGES.map((img, idx) => (
+              <button
+                type="button"
+                key={idx}
+                onClick={() => setImageUrl(img)}
+                className={`w-9 h-9 rounded-lg flex-shrink-0 overflow-hidden border-2 transition-all ${
+                  imageUrl === img ? 'border-[#FF8FB8] scale-105 shadow-xs' : 'border-transparent opacity-60 hover:opacity-100'
+                }`}
+              >
+                <img src={img} alt="Preset" className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -321,8 +372,8 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
                 type="number"
                 min="0.1"
                 step="any"
-                value={ing.amount}
-                onChange={(e) => handleUpdateIngredient(idx, 'amount', Number(e.target.value))}
+                value={ing.amount === 0 ? '' : ing.amount}
+                onChange={(e) => handleUpdateIngredient(idx, 'amount', e.target.value === '' ? 0 : Number(e.target.value))}
                 className="w-16 bg-white border border-slate-200 rounded-xl px-2 py-1.5 text-xs font-bold text-slate-800 text-center focus:outline-none"
               />
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, MoreVertical, Plus, ChefHat, ArrowUpDown, Star, Calendar, Check, Share2, CheckCircle2 } from 'lucide-react';
+import { Search, MoreVertical, Plus, ChefHat, ArrowUpDown, Star, Calendar, Check, Share2, CheckCircle2, ImageOff } from 'lucide-react';
 import { Category, Recipe } from '../types';
 import { shareRecipeData } from '../utils/shareUtils';
 
@@ -227,11 +227,18 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
             >
               <div className="flex items-center gap-3.5 min-w-0">
                 <div className="relative flex-shrink-0">
-                  <img
-                    src={recipe.imageUrl}
-                    alt={recipe.title}
-                    className="w-16 h-16 rounded-2xl object-cover border border-slate-100 group-hover:scale-105 transition-transform"
-                  />
+                  {recipe.imageUrl ? (
+                    <img
+                      src={recipe.imageUrl}
+                      alt={recipe.title}
+                      className="w-16 h-16 rounded-2xl object-cover border border-slate-100 group-hover:scale-105 transition-transform"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200/80 flex flex-col items-center justify-center text-slate-400 group-hover:scale-105 transition-transform">
+                      <ImageOff className="w-5 h-5 opacity-40 mb-0.5 text-slate-500" />
+                      <span className="text-[9px] font-extrabold text-slate-500">No image</span>
+                    </div>
+                  )}
                   {recipe.rating && (
                     <div className="absolute -bottom-1 -right-1 bg-amber-400 text-slate-900 text-[10px] font-black px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-0.5">
                       <Star className="w-2.5 h-2.5 fill-slate-900 stroke-none" />

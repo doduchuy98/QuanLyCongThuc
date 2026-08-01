@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle2, Clock, ChefHat, Sparkles, Share2, Users, RotateCcw, Pencil } from 'lucide-react';
+import { Plus, CheckCircle2, Clock, ChefHat, Sparkles, Share2, Users, RotateCcw, Pencil, ImageOff } from 'lucide-react';
 import { Recipe, CookingStep } from '../types';
 import { shareRecipeData } from '../utils/shareUtils';
 
@@ -32,12 +32,14 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   const baseServings = getBaseServings(recipe.portionLabel);
   const [servings, setServings] = useState<number>(baseServings);
   const [portionMultiplier, setPortionMultiplier] = useState<number>(1);
+  const [ingredientInputs, setIngredientInputs] = useState<{ [key: number]: string }>({});
 
   // Sync when recipe changes
   useEffect(() => {
     const base = getBaseServings(recipe.portionLabel);
     setServings(base);
     setPortionMultiplier(1);
+    setIngredientInputs({});
   }, [recipe.id, recipe.portionLabel]);
 
   // When user changes servings count
@@ -45,10 +47,17 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
     const validServings = Math.max(0.1, val);
     setServings(validServings);
     setPortionMultiplier(validServings / baseServings);
+    setIngredientInputs({});
   };
 
   // When user directly changes 1 ingredient's amount in "Định lượng" tab
   const handleIngredientAmountChange = (index: number, newAmountStr: string) => {
+    setIngredientInputs((prev) => ({ ...prev, [index]: newAmountStr }));
+
+    if (newAmountStr.trim() === '') {
+      return;
+    }
+
     const baseAmount = recipe.ingredients[index]?.amount || 0;
     if (baseAmount <= 0) return;
 
@@ -64,6 +73,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   const handleResetScaling = () => {
     setPortionMultiplier(1);
     setServings(baseServings);
+    setIngredientInputs({});
   };
 
   // Interactive state for cooking steps completion
@@ -92,12 +102,21 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
     <div className="pb-28 animate-fade-in">
       {/* Top Dish Cover Photo Banner */}
       <div className="relative w-full h-52 bg-slate-100 overflow-hidden">
-        <img
-          src={recipe.imageUrl}
-          alt={recipe.title}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent" />
+        {recipe.imageUrl ? (
+          <>
+            <img
+              src={recipe.imageUrl}
+              alt={recipe.title}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent" />
+          </>
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-slate-100 via-pink-50/30 to-slate-200 flex flex-col items-center justify-center text-slate-400">
+            <ImageOff className="w-10 h-10 mb-1 opacity-40 text-slate-500" />
+            <span className="text-xs font-black uppercase tracking-widest text-slate-500">No Image</span>
+          </div>
+        )}
 
         {/* Status Badge Top Right */}
         <div className="absolute top-3 right-3">
@@ -280,11 +299,15 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                   type="number"
                   min="0.1"
                   step="0.5"
-                  value={servings}
+                  value={servings === 0 ? '' : servings}
                   onChange={(e) => {
+                    if (e.target.value === '') {
+                      setServings(0);
+                      setIngredientInputs({});
+                      return;
+                    }
                     const val = parseFloat(e.target.value);
                     if (!isNaN(val)) handleServingsChange(val);
-                    else setServings(0);
                   }}
                   className="w-16 text-center font-black text-slate-800 text-base focus:outline-none"
                 />
@@ -325,6 +348,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
             <div className="divide-y divide-slate-100">
               {recipe.ingredients.map((ing, idx) => {
                 const calculatedAmount = Math.round(ing.amount * portionMultiplier * 10) / 10;
+                const displayVal = ingredientInputs[idx] !== undefined ? ingredientInputs[idx] : calculatedAmount;
                 return (
                   <div
                     key={idx}
@@ -338,7 +362,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                       <input
                         type="number"
                         step="any"
-                        value={calculatedAmount}
+                        value={displayVal}
                         onChange={(e) => handleIngredientAmountChange(idx, e.target.value)}
                         className="w-full text-center bg-pink-50/80 border border-pink-200 focus:border-[#FF8FB8] focus:bg-white text-pink-600 font-black rounded-xl py-1 px-1 text-xs focus:ring-2 focus:ring-[#FF8FB8]/40 outline-none transition-all shadow-2xs"
                         title="Thay đổi định lượng nguyên liệu này để tự động đổi toàn bộ nguyên liệu khác"
