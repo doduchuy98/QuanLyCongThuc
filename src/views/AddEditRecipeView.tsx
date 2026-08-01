@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Upload, Plus, Trash2, Check, Sparkles, Search, Carrot, X, ImageOff } from 'lucide-react';
+import { Upload, Plus, Trash2, Check, Sparkles, Search, Carrot, X, ImageOff, Coins } from 'lucide-react';
 import { Category, IngredientItem, Recipe, RecipeIngredient, CookingStep } from '../types';
+import { calculateRecipeTotalCost, formatCurrency } from '../utils/costUtils';
 
 interface AddEditRecipeViewProps {
   recipeToEdit?: Recipe | null;
@@ -391,6 +392,34 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
             </div>
           ))}
         </div>
+
+        {/* Live Total Cost Calculation Banner */}
+        {(() => {
+          const tempRecipe: Recipe = {
+            id: 'temp',
+            title: '',
+            category: '',
+            imageUrl: '',
+            description: '',
+            isActive: true,
+            updatedAt: '',
+            portionLabel: portionLabel || '1 phần',
+            ingredients,
+            steps: [],
+          };
+          const estimatedCost = calculateRecipeTotalCost(tempRecipe, availableIngredients);
+          return (
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-slate-700">
+              <span className="flex items-center gap-1.5 text-slate-500">
+                <Coins className="w-4 h-4 text-emerald-600" />
+                <span>Ước tính giá vốn nguyên liệu:</span>
+              </span>
+              <span className="text-sm font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200/60">
+                {formatCurrency(estimatedCost)}
+              </span>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Cooking Steps Section */}

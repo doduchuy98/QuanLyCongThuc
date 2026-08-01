@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Menu, Search, MoreVertical, Check, Pencil, Bell, Scale, Sparkles } from 'lucide-react';
+import { ArrowLeft, Menu, Search, MoreVertical, Check, Pencil, Bell, Scale, Sparkles, ShieldCheck, Lock, Unlock } from 'lucide-react';
 
 interface HeaderProps {
   title: string;
@@ -21,6 +21,9 @@ interface HeaderProps {
   showScale?: boolean;
   onScaleClick?: () => void;
   rightAction?: React.ReactNode;
+  isAdmin?: boolean;
+  onOpenAdminLogin?: () => void;
+  onLogoutAdmin?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -43,6 +46,9 @@ export const Header: React.FC<HeaderProps> = ({
   showScale,
   onScaleClick,
   rightAction,
+  isAdmin,
+  onOpenAdminLogin,
+  onLogoutAdmin,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-pink-100/80 shadow-xs transition-all">
@@ -88,13 +94,32 @@ export const Header: React.FC<HeaderProps> = ({
               <Menu className="w-5 h-5 text-slate-700" />
             </button>
           )}
-          <h1 className="text-lg font-bold text-slate-800 tracking-tight truncate max-w-[200px]">
+          <h1 className="text-lg font-bold text-slate-800 tracking-tight truncate max-w-[180px]">
             {title}
           </h1>
         </div>
 
-
       <div className="flex items-center gap-1">
+        {/* Admin Badge / Login Toggle */}
+        {isAdmin ? (
+          <button
+            onClick={onLogoutAdmin}
+            title="Nhấn để thoát quyền Admin"
+            className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-extrabold hover:bg-emerald-100 transition-all shadow-2xs mr-1"
+          >
+            <ShieldCheck className="w-3 h-3 text-emerald-600" />
+            <span>ADMIN</span>
+          </button>
+        ) : (
+          <button
+            onClick={onOpenAdminLogin}
+            title="Đăng nhập quyền Admin"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-pink-50 hover:text-pink-600 border border-slate-200/80 text-[10px] font-bold transition-all mr-1"
+          >
+            <Lock className="w-3 h-3 text-slate-400" />
+            <span>Admin</span>
+          </button>
+        )}
         {showScale && (
           <button
             onClick={onScaleClick}

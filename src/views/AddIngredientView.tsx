@@ -28,6 +28,7 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
   const [name, setName] = useState(ingredientToEdit?.name || '');
   const [unit, setUnit] = useState(ingredientToEdit?.unit || 'gram');
   const [category, setCategory] = useState(ingredientToEdit?.category || 'Thịt tươi');
+  const [pricePerUnit, setPricePerUnit] = useState<number | ''>(ingredientToEdit?.pricePerUnit ?? '');
   const [note, setNote] = useState(ingredientToEdit?.note || '');
   const [imageUrl, setImageUrl] = useState(
     ingredientToEdit?.imageUrl || PRESET_INGREDIENT_IMAGES[0]
@@ -70,6 +71,7 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
       name,
       unit,
       category,
+      pricePerUnit: pricePerUnit === '' ? undefined : Number(pricePerUnit),
       note,
       imageUrl,
       isActive,
@@ -250,6 +252,32 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
               <option value="Khác">Khác</option>
             </select>
           </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1">
+            Đơn giá vốn (VNĐ / {unit || 'đơn vị'})
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              min="0"
+              step="any"
+              placeholder="VD: 250 (nghĩa là 250đ / 1 gram)"
+              value={pricePerUnit}
+              onChange={(e) => {
+                const val = e.target.value;
+                setPricePerUnit(val === '' ? '' : Number(val));
+              }}
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-3.5 pr-12 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8] focus:bg-white"
+            />
+            <span className="absolute right-3.5 top-2.5 text-xs font-bold text-slate-400">
+              VNĐ
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1">
+            Dùng để tính tự động tổng giá vốn (Cost) món ăn. Ví dụ: Thịt bò 260.000đ/kg = 260đ/gram.
+          </p>
         </div>
 
         <div>

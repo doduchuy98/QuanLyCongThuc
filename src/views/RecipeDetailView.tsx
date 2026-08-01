@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle2, Clock, ChefHat, Sparkles, Share2, Users, RotateCcw, Pencil, ImageOff } from 'lucide-react';
-import { Recipe, CookingStep } from '../types';
+import { Plus, CheckCircle2, Clock, ChefHat, Sparkles, Share2, Users, RotateCcw, Pencil, ImageOff, Coins, Calculator, TrendingUp, Info } from 'lucide-react';
+import { Recipe, CookingStep, IngredientItem } from '../types';
 import { shareRecipeData } from '../utils/shareUtils';
+import { calculateIngredientCost, calculateRecipeTotalCost, formatCurrency } from '../utils/costUtils';
 
 interface RecipeDetailViewProps {
   recipe: Recipe;
+  allIngredients?: IngredientItem[];
+  isAdmin?: boolean;
+  onOpenAdminLogin?: () => void;
   onEditRecipe: (recipeId: string) => void;
   onUpdateRecipe: (updatedRecipe: Recipe) => void;
   onBack: () => void;
@@ -12,11 +16,18 @@ interface RecipeDetailViewProps {
 
 export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   recipe,
+  allIngredients = [],
+  isAdmin,
+  onOpenAdminLogin,
   onEditRecipe,
   onUpdateRecipe,
   onBack,
 }) => {
-  const [activeTab, setActiveTab] = useState<'thanh_phan' | 'dinh_luong' | 'quy_trinh' | 'thong_tin'>('thanh_phan');
+  const [activeTab, setActiveTab] = useState<'thanh_phan' | 'gia_von' | 'dinh_luong' | 'quy_trinh' | 'thong_tin'>('thanh_phan');
+
+  // Profit Margin & Extra Costs state
+  const [desiredMarginPercent, setDesiredMarginPercent] = useState<number>(50); // Default 50% margin
+  const [extraOverheadCost, setExtraOverheadCost] = useState<number>(0); // Packaging / energy per portion
 
   // Base servings calculation from portionLabel (e.g., "1 phần", "2 phần")
   const getBaseServings = (portionLabel?: string): number => {
@@ -146,6 +157,21 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
         {/* Header Action Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           <button
+            onClick={() => {
+              if (isAdmin) {
+                onEditRecipe(recipe.id);
+              } else if (onOpenAdminLogin) {
+                onOpenAdminLogin();
+              }
+            }}
+            className="px-3 py-2 rounded-2xl bg-pink-50 text-[#FF8FB8] hover:bg-pink-100 font-bold text-xs transition-all flex items-center gap-1.5 border border-pink-200/60"
+            title="Sửa công thức"
+          >
+            <Pencil className="w-4 h-4" />
+            <span className="hidden sm:inline">Sửa công thức</span>
+          </button>
+
+          <button
             onClick={handleShare}
             className="px-3 py-2 rounded-2xl bg-sky-500 text-white font-bold text-xs shadow-xs hover:bg-sky-600 transition-all flex items-center gap-1.5"
             title="Chia sẻ công thức"
@@ -170,10 +196,10 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
       )}
 
       {/* Sub-Tabs Bar */}
-      <div className="sticky top-14 z-30 bg-white border-b border-pink-100 flex items-center justify-around px-2 text-xs font-bold">
+      <div className="sticky top-14 z-30 bg-white border-b border-pink-100 flex items-center justify-between px-2 text-xs font-bold overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab('thanh_phan')}
-          className={`py-3 px-2 border-b-2 transition-all ${
+          className={`py-3 px-2.5 border-b-2 whitespace-nowrap transition-all ${
             activeTab === 'thanh_phan'
               ? 'border-[#FF8FB8] text-[#FF8FB8]'
               : 'border-transparent text-slate-400 hover:text-slate-600'
@@ -182,8 +208,19 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
           Thành phần
         </button>
         <button
+          onClick={() => setActiveTab('gia_von')}
+          className={`py-3 px-2.5 border-b-2 whitespace-nowrap transition-all flex items-center gap-1 ${
+            activeTab === 'gia_von'
+              ? 'border-[#FF8FB8] text-[#FF8FB8]'
+              : 'border-transparent text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          <Coins className="w-3.5 h-3.5" />
+          <span>Giá vốn (Cost)</span>
+        </button>
+        <button
           onClick={() => setActiveTab('dinh_luong')}
-          className={`py-3 px-2 border-b-2 transition-all ${
+          className={`py-3 px-2.5 border-b-2 whitespace-nowrap transition-all ${
             activeTab === 'dinh_luong'
               ? 'border-[#FF8FB8] text-[#FF8FB8]'
               : 'border-transparent text-slate-400 hover:text-slate-600'
@@ -193,7 +230,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
         </button>
         <button
           onClick={() => setActiveTab('quy_trinh')}
-          className={`py-3 px-2 border-b-2 transition-all ${
+          className={`py-3 px-2.5 border-b-2 whitespace-nowrap transition-all ${
             activeTab === 'quy_trinh'
               ? 'border-[#FF8FB8] text-[#FF8FB8]'
               : 'border-transparent text-slate-400 hover:text-slate-600'
@@ -203,7 +240,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
         </button>
         <button
           onClick={() => setActiveTab('thong_tin')}
-          className={`py-3 px-2 border-b-2 transition-all ${
+          className={`py-3 px-2.5 border-b-2 whitespace-nowrap transition-all ${
             activeTab === 'thong_tin'
               ? 'border-[#FF8FB8] text-[#FF8FB8]'
               : 'border-transparent text-slate-400 hover:text-slate-600'
@@ -254,6 +291,194 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
             <p className="text-xs text-slate-500 font-medium">
               Chế độ xem chi tiết. Để sửa nguyên liệu hoặc công thức, nhấn biểu tượng chỉnh sửa ở góc trên màn hình.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Tab Content: Giá vốn (Cost) */}
+      {activeTab === 'gia_von' && (
+        <div className="p-4 space-y-4 animate-fade-in">
+          {/* Top Summary Cost Header Banner */}
+          <div className="bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 text-white p-4 rounded-3xl shadow-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
+                  <Coins className="w-5 h-5 text-amber-300" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-emerald-100 uppercase tracking-wider">Tổng giá vốn món ăn (Cost)</h3>
+                  <p className="text-[11px] text-emerald-200">Dựa trên {recipe.ingredients.length} nguyên liệu</p>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm text-[11px] font-bold text-white">
+                Khẩu phần: {servings} phần
+              </span>
+            </div>
+
+            {/* Big Numbers Row */}
+            {(() => {
+              const rawTotalCost = recipe.ingredients.reduce((sum, ing) => {
+                const amount = ing.amount * portionMultiplier;
+                const price =
+                  ing.pricePerUnit ??
+                  allIngredients.find((item) => item.id === ing.ingredientId || item.name === ing.ingredientName)?.pricePerUnit ??
+                  0;
+                return sum + amount * price;
+              }, 0);
+
+              const costPerPortion = servings > 0 ? Math.round(rawTotalCost / servings) : 0;
+              const totalCostWithOverhead = costPerPortion + extraOverheadCost;
+              const marginFactor = 1 - (desiredMarginPercent / 100);
+              const rawSellingPrice = marginFactor > 0 ? Math.round(totalCostWithOverhead / marginFactor) : 0;
+              // Round selling price to nearest 1,000 VND for menu pricing
+              const suggestedPrice = Math.ceil(rawSellingPrice / 1000) * 1000;
+              const profitPerPortion = suggestedPrice - totalCostWithOverhead;
+
+              return (
+                <>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div className="bg-white/10 backdrop-blur-md p-3 rounded-2xl border border-white/15">
+                      <span className="text-[10px] text-emerald-100 font-bold block">Tổng chi phí công thức</span>
+                      <span className="text-xl font-black text-white">{formatCurrency(rawTotalCost)}</span>
+                    </div>
+
+                    <div className="bg-white/10 backdrop-blur-md p-3 rounded-2xl border border-white/15">
+                      <span className="text-[10px] text-emerald-100 font-bold block">Giá vốn 1 phần ăn</span>
+                      <span className="text-xl font-black text-amber-300">{formatCurrency(totalCostWithOverhead)}</span>
+                    </div>
+                  </div>
+
+                  {/* PROFIT MARGIN & SELLING PRICE CALCULATOR */}
+                  <div className="bg-white/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/20 space-y-3 mt-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Calculator className="w-4 h-4 text-amber-300" />
+                        <span className="text-xs font-bold text-white">Tính giá bán & Lợi nhuận</span>
+                      </div>
+                      <span className="text-[11px] font-extrabold text-amber-300">
+                        Margin: {desiredMarginPercent}%
+                      </span>
+                    </div>
+
+                    {/* Quick Margin Preset Buttons */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                      <span className="text-[10px] font-bold text-emerald-100 flex-shrink-0">Tỷ lệ lãi:</span>
+                      {[30, 40, 50, 60, 70].map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => setDesiredMarginPercent(m)}
+                          className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all ${
+                            desiredMarginPercent === m
+                              ? 'bg-amber-400 text-slate-900 shadow-xs'
+                              : 'bg-white/15 text-white hover:bg-white/25'
+                          }`}
+                        >
+                          {m}%
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Overhead / Packaging input */}
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/15 text-xs">
+                      <span className="text-[11px] text-emerald-100">Chi phí khác (Hộp, điện, nước / phần):</span>
+                      <div className="relative w-28">
+                        <input
+                          type="number"
+                          min="0"
+                          step="500"
+                          value={extraOverheadCost === 0 ? '' : extraOverheadCost}
+                          onChange={(e) => setExtraOverheadCost(e.target.value === '' ? 0 : Number(e.target.value))}
+                          placeholder="0 đ"
+                          className="w-full bg-white/20 border border-white/30 rounded-xl px-2 py-1 text-right text-xs font-bold text-white focus:outline-none focus:bg-white/30 placeholder-white/50"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Suggested Price & Gross Profit Output */}
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/20 text-slate-900">
+                      <div className="bg-white p-2.5 rounded-xl shadow-xs">
+                        <span className="text-[10px] font-bold text-slate-500 block">Giá bán đề xuất / phần</span>
+                        <span className="text-sm font-black text-emerald-700">{formatCurrency(suggestedPrice)}</span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-xl shadow-xs">
+                        <span className="text-[10px] font-bold text-slate-500 block">Lợi nhuận gộp / phần</span>
+                        <span className="text-sm font-black text-[#FF6B9D]">{formatCurrency(profitPerPortion)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+
+          {/* Ingredient Price Breakdown Table */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <span>Bảng chi tiết giá vốn nguyên liệu</span>
+                <span className="text-[10px] font-medium text-slate-400">(Có thể sửa trực tiếp đơn giá)</span>
+              </h4>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-2xs overflow-hidden">
+              <div className="grid grid-cols-12 bg-slate-50/80 px-3 py-2 text-[10px] font-bold text-slate-500 border-b border-slate-100">
+                <span className="col-span-4">Nguyên liệu</span>
+                <span className="col-span-2 text-center">Lượng</span>
+                <span className="col-span-3 text-center">Đơn giá (đ)</span>
+                <span className="col-span-3 text-right">Thành tiền</span>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {recipe.ingredients.map((ing, idx) => {
+                  const currentAmount = Math.round(ing.amount * portionMultiplier * 10) / 10;
+                  const masterMatch = allIngredients.find((item) => item.id === ing.ingredientId || item.name === ing.ingredientName);
+                  const effectiveUnitPrice = ing.pricePerUnit ?? masterMatch?.pricePerUnit ?? 0;
+                  const ingredientCost = Math.round(currentAmount * effectiveUnitPrice);
+
+                  return (
+                    <div
+                      key={idx}
+                      className="grid grid-cols-12 px-3 py-2.5 text-xs font-semibold text-slate-700 items-center hover:bg-pink-50/20 transition-colors"
+                    >
+                      <div className="col-span-4 min-w-0 pr-1">
+                        <span className="font-bold text-slate-800 block truncate" title={ing.ingredientName}>
+                          {ing.ingredientName}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-normal">{ing.unit}</span>
+                      </div>
+
+                      <span className="col-span-2 text-center text-slate-700 font-bold">
+                        {currentAmount}
+                      </span>
+
+                      {/* Editable Unit Price Field */}
+                      <div className="col-span-3 px-1">
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={effectiveUnitPrice === 0 ? '' : effectiveUnitPrice}
+                          placeholder="0"
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? 0 : Number(e.target.value);
+                            const updatedIngs = recipe.ingredients.map((item, i) =>
+                              i === idx ? { ...item, pricePerUnit: val } : item
+                            );
+                            onUpdateRecipe({ ...recipe, ingredients: updatedIngs });
+                          }}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF8FB8] focus:bg-white text-slate-800 text-center rounded-lg py-1 px-1 text-xs font-bold outline-none"
+                          title="Chạm vào để thay đổi đơn giá nguyên liệu"
+                        />
+                      </div>
+
+                      <span className="col-span-3 text-right font-black text-slate-800">
+                        {ingredientCost > 0 ? formatCurrency(ingredientCost) : <span className="text-slate-300 font-normal">Chưa có giá</span>}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       )}

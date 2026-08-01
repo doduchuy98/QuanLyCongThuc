@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
-import { Search, MoreVertical, Plus, ChefHat, ArrowUpDown, Star, Calendar, Check, Share2, CheckCircle2, ImageOff } from 'lucide-react';
-import { Category, Recipe } from '../types';
+import { Search, MoreVertical, Plus, ChefHat, ArrowUpDown, Star, Calendar, Check, Share2, CheckCircle2, ImageOff, Coins } from 'lucide-react';
+import { Category, IngredientItem, Recipe } from '../types';
 import { shareRecipeData } from '../utils/shareUtils';
+import { calculateRecipeTotalCost, formatCurrency } from '../utils/costUtils';
 
 export type SortOption = 'date_desc' | 'date_asc' | 'name_asc' | 'name_desc' | 'rating_desc';
 
 interface RecipesViewProps {
   recipes: Recipe[];
   categories: Category[];
+  allIngredients?: IngredientItem[];
+  isAdmin?: boolean;
+  onOpenAdminLogin?: () => void;
   onSelectRecipe: (recipeId: string) => void;
   onAddRecipe: () => void;
   onEditRecipe: (recipeId: string) => void;
@@ -25,11 +29,37 @@ const SORT_OPTIONS: { id: SortOption; label: string; subLabel: string; icon: str
 export const RecipesView: React.FC<RecipesViewProps> = ({
   recipes,
   categories,
+  allIngredients = [],
+  isAdmin,
+  onOpenAdminLogin,
   onSelectRecipe,
   onAddRecipe,
   onEditRecipe,
   onDeleteRecipe,
 }) => {
+  const handleProtectedAddRecipe = () => {
+    if (!isAdmin && onOpenAdminLogin) {
+      onOpenAdminLogin();
+    } else {
+      onAddRecipe();
+    }
+  };
+
+  const handleProtectedEditRecipe = (id: string) => {
+    if (!isAdmin && onOpenAdminLogin) {
+      onOpenAdminLogin();
+    } else {
+      onEditRecipe(id);
+    }
+  };
+
+  const handleProtectedDeleteRecipe = (id: string) => {
+    if (!isAdmin && onOpenAdminLogin) {
+      onOpenAdminLogin();
+    } else {
+      onDeleteRecipe(id);
+    }
+  };
   const [selectedCategory, setSelectedCategory] = useState<string>('Tất cả');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<SortOption>('date_desc');
@@ -259,6 +289,19 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
                     <span className="text-[11px] font-medium text-slate-400">
                       {recipe.ingredients.length} ng.liệu
                     </span>
+                    {(() => {
+                      const cost = calculateRecipeTotalCost(recipe, allIngredients);
+                      if (cost <= 0) return null;
+                      return (
+                        <>
+                          <span className="text-slate-300">•</span>
+                          <span className="inline-flex items-center gap-0.5 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200/60">
+                            <Coins className="w-2.5 h-2.5 text-emerald-600" />
+                            {formatCurrency(cost)}
+                          </span>
+                        </>
+                      );
+                    })()}
                   </div>
                   {recipe.updatedAt && (
                     <div className="flex items-center gap-1 text-[10px] font-medium text-slate-400 mt-1">
@@ -305,7 +348,7 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
                     <button
                       onClick={() => {
                         setActiveMenuId(null);
-                        onEditRecipe(recipe.id);
+                        handleProtectedEditRecipe(recipe.id);
                       }}
                       className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-pink-50 flex items-center gap-2"
                     >
@@ -314,8 +357,12 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
                     <button
                       onClick={() => {
                         setActiveMenuId(null);
-                        if (confirm(`Bạn có chắc muốn xóa công thức "${recipe.title}"?`)) {
-                          onDeleteRecipe(recipe.id);
+                        if (isAdmin) {
+                          if (confirm(`Bạn có chắc muốn xóa công thức "${recipe.title}"?`)) {
+                            onDeleteRecipe(recipe.id);
+                          }
+                        } else {
+                          handleProtectedDeleteRecipe(recipe.id);
                         }
                       }}
                       className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 border-t border-slate-100"

@@ -4,6 +4,8 @@ import { IngredientItem } from '../types';
 
 interface IngredientsViewProps {
   ingredients: IngredientItem[];
+  isAdmin?: boolean;
+  onOpenAdminLogin?: () => void;
   onAddIngredient: () => void;
   onSelectIngredient: (ing: IngredientItem) => void;
   onDeleteIngredient: (ingId: string) => void;
@@ -11,6 +13,8 @@ interface IngredientsViewProps {
 
 export const IngredientsView: React.FC<IngredientsViewProps> = ({
   ingredients,
+  isAdmin,
+  onOpenAdminLogin,
   onAddIngredient,
   onSelectIngredient,
   onDeleteIngredient,
@@ -84,7 +88,13 @@ export const IngredientsView: React.FC<IngredientsViewProps> = ({
           filtered.map((ing) => (
             <div
               key={ing.id}
-              onClick={() => onSelectIngredient(ing)}
+              onClick={() => {
+                if (isAdmin) {
+                  onSelectIngredient(ing);
+                } else if (onOpenAdminLogin) {
+                  onOpenAdminLogin();
+                }
+              }}
               className="flex items-center justify-between p-3 rounded-[20px] bg-white border border-slate-100 shadow-2xs hover:shadow-md transition-all cursor-pointer group"
             >
               <div className="flex items-center gap-3">
@@ -103,8 +113,13 @@ export const IngredientsView: React.FC<IngredientsViewProps> = ({
                   <h3 className="font-bold text-slate-800 text-sm group-hover:text-[#FF8FB8] transition-colors">
                     {ing.name}
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Đơn vị: <span className="font-semibold text-slate-600">{ing.unit}</span>
+                  <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                    <span>Đơn vị: <span className="font-semibold text-slate-600">{ing.unit}</span></span>
+                    {ing.pricePerUnit !== undefined && ing.pricePerUnit > 0 && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200/60">
+                        {new Intl.NumberFormat('vi-VN').format(ing.pricePerUnit)}đ/{ing.unit}
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -113,8 +128,12 @@ export const IngredientsView: React.FC<IngredientsViewProps> = ({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (confirm(`Xóa nguyên liệu "${ing.name}"?`)) {
-                      onDeleteIngredient(ing.id);
+                    if (isAdmin) {
+                      if (confirm(`Xóa nguyên liệu "${ing.name}"?`)) {
+                        onDeleteIngredient(ing.id);
+                      }
+                    } else if (onOpenAdminLogin) {
+                      onOpenAdminLogin();
                     }
                   }}
                   className="w-8 h-8 rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition-opacity"

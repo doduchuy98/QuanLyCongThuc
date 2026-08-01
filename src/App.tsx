@@ -15,11 +15,45 @@ import { AddIngredientView } from './views/AddIngredientView';
 import { CategoriesView } from './views/CategoriesView';
 import { SettingsView } from './views/SettingsView';
 
+import { AdminLoginModal } from './components/AdminLoginModal';
+import { ChangePinModal } from './components/ChangePinModal';
+
 import { INITIAL_RECIPES, INITIAL_INGREDIENTS, INITIAL_CATEGORIES } from './data/mockData';
 import { ActiveTab, Category, IngredientItem, Recipe } from './types';
 
 export default function App() {
   const { isOffline } = useOffline();
+
+  // Admin Permission State (Default false for public guests on Vercel)
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
+    return localStorage.getItem('app_is_admin') === 'true';
+  });
+
+  const [adminPin, setAdminPin] = useState<string>(() => {
+    return localStorage.getItem('app_admin_pin') || '1234';
+  });
+
+  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
+  const [isChangePinOpen, setIsChangePinOpen] = useState(false);
+
+  const handleAdminLogin = (inputPin: string): boolean => {
+    if (inputPin === adminPin) {
+      setIsAdmin(true);
+      localStorage.setItem('app_is_admin', 'true');
+      return true;
+    }
+    return false;
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdmin(false);
+    localStorage.removeItem('app_is_admin');
+  };
+
+  const handleChangeAdminPin = (newPin: string) => {
+    setAdminPin(newPin);
+    localStorage.setItem('app_admin_pin', newPin);
+  };
 
   // Persistence state
   const [recipes, setRecipes] = useState<Recipe[]>(() => {
@@ -215,12 +249,9 @@ export default function App() {
           showBell={activeTab === 'home' && subView === 'none'}
           showScale={true}
           onScaleClick={() => setIsUnitConverterOpen(true)}
-          showEdit={subView === 'recipe_detail'}
-          onEditClick={() => {
-            if (selectedRecipeId) {
-              setSubView('edit_recipe');
-            }
-          }}
+          isAdmin={isAdmin}
+          onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
+          onLogoutAdmin={handleAdminLogout}
         />
 
         {/* Offline Notice Banner */}
@@ -242,7 +273,16 @@ export default function App() {
           {subView === 'recipe_detail' && selectedRecipe ? (
             <RecipeDetailView
               recipe={selectedRecipe}
-              onEditRecipe={handleStartEditRecipe}
+              allIngredients={ingredients}
+              isAdmin={isAdmin}
+              onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
+              onEditRecipe={(id) => {
+                if (isAdmin) {
+                  handleStartEditRecipe(id);
+                } else {
+                  setIsAdminLoginOpen(true);
+                }
+              }}
               onUpdateRecipe={handleSaveRecipe}
               onBack={() => setSubView('none')}
             />
@@ -292,6 +332,9 @@ export default function App() {
                 <RecipesView
                   recipes={recipes}
                   categories={categories}
+                  allIngredients={ingredients}
+                  isAdmin={isAdmin}
+                  onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
                   onSelectRecipe={handleSelectRecipe}
                   onAddRecipe={handleStartAddRecipe}
                   onEditRecipe={handleStartEditRecipe}
@@ -302,6 +345,8 @@ export default function App() {
               {activeTab === 'ingredients' && (
                 <IngredientsView
                   ingredients={ingredients}
+                  isAdmin={isAdmin}
+                  onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
                   onAddIngredient={handleStartAddIngredient}
                   onSelectIngredient={handleSelectIngredientToEdit}
                   onDeleteIngredient={handleDeleteIngredient}
@@ -313,6 +358,8 @@ export default function App() {
                   categories={categories}
                   recipes={recipes}
                   ingredients={ingredients}
+                  isAdmin={isAdmin}
+                  onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
                   onSelectCategoryFilter={(catName) => {
                     setActiveTab('recipes');
                   }}
@@ -326,6 +373,10 @@ export default function App() {
                   recipes={recipes}
                   ingredients={ingredients}
                   categories={categories}
+                  isAdmin={isAdmin}
+                  onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
+                  onLogoutAdmin={handleAdminLogout}
+                  onOpenChangePin={() => setIsChangePinOpen(true)}
                   onResetData={handleResetData}
                   onImportData={handleImportData}
                 />
@@ -338,6 +389,8 @@ export default function App() {
         <BottomNav
           activeTab={activeTab}
           onTabChange={handleTabChange}
+          isAdmin={isAdmin}
+          onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
           onQuickAddClick={() => setIsQuickAddOpen(true)}
         />
 
@@ -362,6 +415,21 @@ export default function App() {
         <UnitConverterModal
           isOpen={isUnitConverterOpen}
           onClose={() => setIsUnitConverterOpen(false)}
+        />
+
+        {/* Admin PIN Login Modal */}
+        <AdminLoginModal
+          isOpen={isAdminLoginOpen}
+          onClose={() => setIsAdminLoginOpen(false)}
+          onLogin={handleAdminLogin}
+        />
+
+        {/* Change Admin PIN Modal */}
+        <ChangePinModal
+          isOpen={isChangePinOpen}
+          onClose={() => setIsChangePinOpen(false)}
+          currentPin={adminPin}
+          onChangePin={handleChangeAdminPin}
         />
       </div>
     </div>

@@ -2,6 +2,7 @@ export interface IngredientItem {
   id: string;
   name: string;
   unit: string; // e.g. "gram", "ml", "quả", "muỗng"
+  pricePerUnit?: number; // Price in VNĐ per unit (e.g. 250 VNĐ / gram)
   imageUrl?: string;
   note?: string;
   isActive: boolean;
@@ -13,6 +14,7 @@ export interface RecipeIngredient {
   ingredientName: string;
   amount: number;
   unit: string;
+  pricePerUnit?: number; // Optional override price in VNĐ per unit
 }
 
 export interface CookingStep {

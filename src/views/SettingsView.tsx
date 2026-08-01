@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, Upload, RotateCcw, Smartphone, ShieldCheck, HardDrive, Wifi, WifiOff, Database, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Download, Upload, RotateCcw, Smartphone, ShieldCheck, HardDrive, Wifi, WifiOff, Database, Sparkles, CheckCircle2, Lock, KeyRound, Globe } from 'lucide-react';
 import { Category, IngredientItem, Recipe } from '../types';
 import { useOffline } from '../hooks/useOffline';
 
@@ -7,6 +7,10 @@ interface SettingsViewProps {
   recipes: Recipe[];
   ingredients: IngredientItem[];
   categories: Category[];
+  isAdmin?: boolean;
+  onOpenAdminLogin?: () => void;
+  onLogoutAdmin?: () => void;
+  onOpenChangePin?: () => void;
   onResetData: () => void;
   onImportData: (data: { recipes: Recipe[]; ingredients: IngredientItem[]; categories: Category[] }) => void;
 }
@@ -15,6 +19,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   recipes,
   ingredients,
   categories,
+  isAdmin,
+  onOpenAdminLogin,
+  onLogoutAdmin,
+  onOpenChangePin,
   onResetData,
   onImportData,
 }) => {
@@ -68,13 +76,88 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   return (
     <div className="p-4 space-y-4 pb-28 animate-fade-in">
       {/* App Info Header */}
-      <div className="bg-gradient-to-r from-[#FFD9E8] via-[#FFF8FB] to-[#AEE9FF]/60 p-4 rounded-3xl border border-pink-200/50 flex items-center gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-white text-[#FF8FB8] flex items-center justify-center font-extrabold text-xl shadow-sm border border-pink-100">
-          🍲
+      <div className="bg-gradient-to-r from-[#FFD9E8] via-[#FFF8FB] to-[#AEE9FF]/60 p-4 rounded-3xl border border-pink-200/50 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-white text-[#FF8FB8] flex items-center justify-center font-extrabold text-xl shadow-sm border border-pink-100">
+            🍲
+          </div>
+          <div>
+            <h2 className="font-extrabold text-slate-800 text-sm">Quản Lý Công Thức Món Ăn</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Website Công thức & Tính Giá vốn món ăn</p>
+          </div>
         </div>
-        <div>
-          <h2 className="font-extrabold text-slate-800 text-sm">Quản Lý Công Thức Món Ăn</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Mobile Responsive WebApp v1.0.0</p>
+
+        <div className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold flex items-center gap-1.5 ${
+          isAdmin ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-slate-100 text-slate-600 border border-slate-200'
+        }`}>
+          {isAdmin ? <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> : <Lock className="w-3.5 h-3.5 text-slate-400" />}
+          <span>{isAdmin ? 'Quyền Admin' : 'Khách (Người dùng)'}</span>
+        </div>
+      </div>
+
+      {/* Admin Mode Management Section */}
+      <div className="bg-white p-4 rounded-3xl border border-slate-100 space-y-3 shadow-2xs">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+            <ShieldCheck className="w-4 h-4 text-[#FF8FB8]" />
+            <span>Phân quyền Quản trị Admin</span>
+          </h3>
+          <span className="text-[10px] font-bold text-slate-400">Vercel Deployment Mode</span>
+        </div>
+
+        <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
+          {isAdmin ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-black">
+                    ✓
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-extrabold text-emerald-900">Đã kích hoạt quyền Admin</h4>
+                    <p className="text-[11px] text-emerald-700">Bạn có toàn quyền Thêm / Sửa / Xóa công thức & giá vốn.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onOpenChangePin}
+                  className="flex-1 py-2.5 px-3 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-2xs"
+                >
+                  <KeyRound className="w-4 h-4 text-amber-500" />
+                  <span>Đổi mã PIN Admin</span>
+                </button>
+                <button
+                  onClick={onLogoutAdmin}
+                  className="flex-1 py-2.5 px-3 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Lock className="w-4 h-4 text-rose-500" />
+                  <span>Đăng xuất Admin</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200/70 text-amber-900 text-xs leading-relaxed space-y-1">
+                <p className="font-extrabold flex items-center gap-1">
+                  <Globe className="w-4 h-4 text-amber-600" />
+                  <span>Chế độ Người dùng (Chỉ đọc)</span>
+                </p>
+                <p className="text-[11px] text-amber-800 font-medium">
+                  Người dùng xem công thức, tra cứu chi phí, tính định lượng mà không thể xóa hay sửa dữ liệu gốc của bạn.
+                </p>
+              </div>
+
+              <button
+                onClick={onOpenAdminLogin}
+                className="w-full py-2.5 px-4 bg-gradient-to-r from-[#FF8FB8] to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Đăng nhập Admin (Nhập mã PIN)</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

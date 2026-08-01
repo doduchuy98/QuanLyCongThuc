@@ -6,12 +6,16 @@ interface BottomNavProps {
   activeTab: ActiveTab;
   onTabChange: (tab: ActiveTab) => void;
   onQuickAddClick?: () => void;
+  isAdmin?: boolean;
+  onOpenAdminLogin?: () => void;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
   activeTab,
   onTabChange,
   onQuickAddClick,
+  isAdmin,
+  onOpenAdminLogin,
 }) => {
   const leftTabs = [
     { id: 'home' as ActiveTab, label: 'Trang chủ', icon: Home },
@@ -59,7 +63,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       {/* Center + Quick Add Button */}
       <div className="relative -top-4 flex flex-col items-center px-1">
         <button
-          onClick={onQuickAddClick}
+          onClick={() => {
+            if (isAdmin) {
+              onQuickAddClick?.();
+            } else if (onOpenAdminLogin) {
+              onOpenAdminLogin();
+            }
+          }}
           className="w-13 h-13 rounded-full bg-gradient-to-tr from-[#FF8FB8] to-[#FF6B9D] text-white flex items-center justify-center shadow-lg shadow-pink-300/60 hover:scale-105 active:scale-95 transition-all duration-200 ring-4 ring-white"
           aria-label="Thêm nhanh"
           title="Thêm nhanh"

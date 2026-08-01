@@ -25,6 +25,8 @@ interface CategoriesViewProps {
   categories: Category[];
   recipes: Recipe[];
   ingredients: IngredientItem[];
+  isAdmin?: boolean;
+  onOpenAdminLogin?: () => void;
   onSelectCategoryFilter: (categoryName: string) => void;
   onAddCategory: (newCat: Category) => void;
   onDeleteCategory: (categoryId: string) => void;
@@ -34,6 +36,8 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
   categories,
   recipes,
   ingredients,
+  isAdmin,
+  onOpenAdminLogin,
   onSelectCategoryFilter,
   onAddCategory,
   onDeleteCategory,
@@ -153,8 +157,12 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
             <p className="text-xs text-slate-400 mt-0.5 mb-3">Tạo danh mục mới để dễ quản lý nhé!</p>
             <button
               onClick={() => {
-                setTargetCatType(activeTab);
-                setIsAddModalOpen(true);
+                if (isAdmin) {
+                  setTargetCatType(activeTab);
+                  setIsAddModalOpen(true);
+                } else if (onOpenAdminLogin) {
+                  onOpenAdminLogin();
+                }
               }}
               className="px-4 py-2 rounded-xl bg-[#FF8FB8] text-white font-bold text-xs shadow-sm hover:opacity-90"
             >
@@ -198,7 +206,11 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setCatToDelete(cat);
+                      if (isAdmin) {
+                        setCatToDelete(cat);
+                      } else if (onOpenAdminLogin) {
+                        onOpenAdminLogin();
+                      }
                     }}
                     className="w-8 h-8 rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
                     title="Xóa danh mục"
@@ -220,8 +232,12 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
       <div className="pt-2">
         <button
           onClick={() => {
-            setTargetCatType(activeTab);
-            setIsAddModalOpen(true);
+            if (isAdmin) {
+              setTargetCatType(activeTab);
+              setIsAddModalOpen(true);
+            } else if (onOpenAdminLogin) {
+              onOpenAdminLogin();
+            }
           }}
           className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#FF8FB8] to-[#FF6B9D] text-white font-bold text-sm shadow-md shadow-pink-200 hover:opacity-95 active:scale-[0.99] transition-all flex items-center justify-center gap-2"
         >
