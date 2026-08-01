@@ -76,15 +76,9 @@ export const IngredientsView: React.FC<IngredientsViewProps> = ({
             <p className="text-sm font-bold text-slate-600">
               Không tìm thấy nguyên liệu phù hợp
             </p>
-            <p className="text-xs text-slate-400 mt-1 mb-4">
-              Thử tìm từ khóa khác hoặc tạo nguyên liệu mới nhé!
+            <p className="text-xs text-slate-400 mt-1">
+              Thử tìm từ khóa khác nhé!
             </p>
-            <button
-              onClick={onAddIngredient}
-              className="px-4 py-2 rounded-xl bg-[#FF8FB8] text-white font-bold text-xs shadow-sm hover:opacity-90"
-            >
-              + Thêm nguyên liệu
-            </button>
           </div>
         ) : (
           filtered.map((ing) => (
@@ -133,17 +127,6 @@ export const IngredientsView: React.FC<IngredientsViewProps> = ({
             </div>
           ))
         )}
-      </div>
-
-      {/* Bottom Sticky Button */}
-      <div className="pt-2">
-        <button
-          onClick={onAddIngredient}
-          className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#FF8FB8] to-[#FF6B9D] text-white font-bold text-sm shadow-md shadow-pink-200 hover:opacity-95 active:scale-[0.99] transition-all flex items-center justify-center gap-2"
-        >
-          <Plus className="w-5 h-5 stroke-[2.5]" />
-          <span>Thêm nguyên liệu</span>
-        </button>
       </div>
     </div>
   );

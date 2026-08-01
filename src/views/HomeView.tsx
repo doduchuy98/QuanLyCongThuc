@@ -60,8 +60,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-700">Tổng công thức</span>
-            <div className="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-700 flex items-center justify-center font-bold">
-              +
+            <div className="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-700 flex items-center justify-center">
+              <Utensils className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2">
@@ -82,8 +82,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-700">Nguyên liệu</span>
-            <div className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center font-bold">
-              +
+            <div className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center">
+              <Carrot className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2">
@@ -104,8 +104,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-700">Danh mục</span>
-            <div className="w-7 h-7 rounded-xl bg-sky-500/20 text-sky-700 flex items-center justify-center font-bold">
-              +
+            <div className="w-7 h-7 rounded-xl bg-sky-500/20 text-sky-700 flex items-center justify-center">
+              <LayoutGrid className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2">
@@ -126,8 +126,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-700">Hoạt động</span>
-            <div className="w-7 h-7 rounded-xl bg-pink-500/20 text-pink-700 flex items-center justify-center font-bold">
-              +
+            <div className="w-7 h-7 rounded-xl bg-pink-500/20 text-pink-700 flex items-center justify-center">
+              <RefreshCw className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2">

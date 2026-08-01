@@ -214,15 +214,9 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
             <p className="text-sm font-bold text-slate-600">
               Không tìm thấy công thức phù hợp
             </p>
-            <p className="text-xs text-slate-400 mt-1 mb-4">
-              Thử tìm từ khóa khác hoặc tạo công thức mới nhé!
+            <p className="text-xs text-slate-400 mt-1">
+              Thử tìm từ khóa khác nhé!
             </p>
-            <button
-              onClick={onAddRecipe}
-              className="px-4 py-2 rounded-xl bg-[#FF8FB8] text-white font-bold text-xs shadow-sm hover:opacity-90"
-            >
-              + Tạo công thức mới
-            </button>
           </div>
         ) : (
           filteredRecipes.map((recipe) => (
@@ -327,17 +321,6 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
             </div>
           ))
         )}
-      </div>
-
-      {/* Floating Add Recipe Button */}
-      <div className="pt-2">
-        <button
-          onClick={onAddRecipe}
-          className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#FF8FB8] to-[#FF6B9D] text-white font-bold text-sm shadow-md shadow-pink-200 hover:opacity-95 active:scale-[0.99] transition-all flex items-center justify-center gap-2"
-        >
-          <Plus className="w-5 h-5 stroke-[2.5]" />
-          <span>Thêm công thức mới</span>
-        </button>
       </div>
     </div>
   );
