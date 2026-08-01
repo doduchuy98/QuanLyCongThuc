@@ -1,0 +1,17 @@
+{
+  "short_name": "RecipeApp",
+  "name": "Quản Lý Công Thức Nấu Ăn",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍳</text></svg>",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#FFF8FB",
+  "theme_color": "#FF8FB8",
+  "display": "standalone",
+  "orientation": "portrait",
+  "description": "Ứng dụng quản lý công thức nấu ăn, định lượng nguyên liệu và hỗ trợ Chế độ nấu ăn Offline."
+}

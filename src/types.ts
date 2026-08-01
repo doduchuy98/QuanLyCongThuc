@@ -1,0 +1,58 @@
+export interface IngredientItem {
+  id: string;
+  name: string;
+  unit: string; // e.g. "gram", "ml", "quả", "muỗng"
+  imageUrl?: string;
+  note?: string;
+  isActive: boolean;
+  category?: string;
+}
+
+export interface RecipeIngredient {
+  ingredientId: string;
+  ingredientName: string;
+  amount: number;
+  unit: string;
+}
+
+export interface CookingStep {
+  stepNumber: number;
+  title: string;
+  description: string;
+  isDone?: boolean;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  iconName: string; // lucide icon name
+  bgColor: string; // hex or tailwind class
+  recipeCount: number;
+  type?: 'recipe' | 'ingredient';
+  itemCount?: number;
+}
+
+export interface Recipe {
+  id: string;
+  title: string;
+  category: string; // Category name
+  imageUrl: string;
+  description: string;
+  isActive: boolean;
+  updatedAt: string; // DD/MM/YYYY
+  rating?: number; // e.g. 4.9
+  portionLabel: string; // e.g. "1 phần", "100 gram", "1 lít"
+  ingredients: RecipeIngredient[];
+  steps: CookingStep[];
+  prepTimeMinutes?: number;
+  cookTimeMinutes?: number;
+}
+
+export interface UnitConversionRule {
+  fromUnit: string;
+  toUnit: string;
+  factor: number; // toUnit = amount * factor
+  note?: string;
+}
+
+export type ActiveTab = 'home' | 'recipes' | 'ingredients' | 'categories' | 'settings';

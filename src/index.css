@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-primary: #FF8FB8;
+    --color-primary-light: #FFD9E8;
+    --color-bg-soft: #FFF8FB;
+    --color-pastel-blue: #AEE9FF;
+    --color-pastel-yellow: #FFECA8;
+    --color-pastel-green: #D9F7BE;
+  }
+
+  body {
+    font-family: 'Quicksand', 'Nunito', sans-serif;
+    background-color: #f1f5f9;
+    color: #292524;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Custom scrollbar for cute look */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #f472b640;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #f472b680;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Glass effect utilities */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}

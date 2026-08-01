@@ -1,0 +1,8 @@
+{
+  "name": "Quản Lý Công Thức",
+  "description": "Ứng dụng mobile web quản lý công thức món ăn, nguyên liệu, định lượng, quy đổi đơn vị và quy trình chế biến.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
