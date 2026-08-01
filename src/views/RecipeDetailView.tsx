@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Plus, CheckCircle2, Circle, Clock, Info, ChefHat, Sparkles, Timer, Play, Maximize2, Flame, Share2, Check, Users, RotateCcw } from 'lucide-react';
-import { Recipe, RecipeIngredient, CookingStep } from '../types';
-import { KitchenTimer } from '../components/KitchenTimer';
-import { CookingModeModal } from '../components/CookingModeModal';
+import { Plus, CheckCircle2, Clock, ChefHat, Sparkles, Share2, Users, RotateCcw, Pencil } from 'lucide-react';
+import { Recipe, CookingStep } from '../types';
 import { shareRecipeData } from '../utils/shareUtils';
 
 interface RecipeDetailViewProps {
@@ -71,14 +69,6 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   // Interactive state for cooking steps completion
   const [stepsState, setStepsState] = useState<CookingStep[]>(recipe.steps || []);
 
-  // Kitchen Timer State
-  const [isTimerOpen, setIsTimerOpen] = useState<boolean>(false);
-  const [timerTitle, setTimerTitle] = useState<string>(`Hẹn giờ: ${recipe.title}`);
-  const [timerMinutes, setTimerMinutes] = useState<number>(5);
-
-  // Fullscreen Cooking Mode State
-  const [isCookingModeOpen, setIsCookingModeOpen] = useState<boolean>(false);
-
   // Share feedback toast
   const [shareFeedbackMsg, setShareFeedbackMsg] = useState<string | null>(null);
 
@@ -90,62 +80,10 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
     }, 3000);
   };
 
-  const extractMinutes = (text: string): number => {
-    const match = text.match(/(\d+)\s*(phút|p|min|m)/i);
-    if (match && match[1]) {
-      const parsed = parseInt(match[1], 10);
-      if (parsed > 0 && parsed <= 300) return parsed;
-    }
-    return 5;
-  };
-
-  const handleOpenGeneralTimer = () => {
-    setTimerTitle(`Hẹn giờ: ${recipe.title}`);
-    setTimerMinutes(recipe.cookTimeMinutes || 5);
-    setIsTimerOpen(true);
-  };
-
-  const handleOpenStepTimer = (step: CookingStep) => {
-    const extracted = extractMinutes(`${step.title} ${step.description}`);
-    setTimerTitle(`${recipe.title} - ${step.title}`);
-    setTimerMinutes(extracted);
-    setIsTimerOpen(true);
-  };
-
   const toggleStepDone = (stepNum: number) => {
     const updated = stepsState.map((s) =>
       s.stepNumber === stepNum ? { ...s, isDone: !s.isDone } : s
     );
-    setStepsState(updated);
-    onUpdateRecipe({ ...recipe, steps: updated });
-  };
-
-  const handleAddIngredientRow = () => {
-    const newIngredient: RecipeIngredient = {
-      ingredientId: `ing-${Date.now()}`,
-      ingredientName: 'Nguyên liệu mới',
-      amount: 100,
-      unit: 'gram',
-    };
-    const updated = [...recipe.ingredients, newIngredient];
-    onUpdateRecipe({ ...recipe, ingredients: updated });
-  };
-
-  const handleDeleteIngredientRow = (index: number) => {
-    const updated = [...recipe.ingredients];
-    updated.splice(index, 1);
-    onUpdateRecipe({ ...recipe, ingredients: updated });
-  };
-
-  const handleAddStep = () => {
-    const newStepNum = stepsState.length + 1;
-    const newStep: CookingStep = {
-      stepNumber: newStepNum,
-      title: `Bước ${newStepNum}: Quy trình mới`,
-      description: 'Nhập hướng dẫn chế biến chi tiết cho bước này...',
-      isDone: false,
-    };
-    const updated = [...stepsState, newStep];
     setStepsState(updated);
     onUpdateRecipe({ ...recipe, steps: updated });
   };
@@ -191,27 +129,10 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
           <button
             onClick={handleShare}
             className="px-3 py-2 rounded-2xl bg-sky-500 text-white font-bold text-xs shadow-xs hover:bg-sky-600 transition-all flex items-center gap-1.5"
-            title="Chia sẻ công thức (Web Share API)"
+            title="Chia sẻ công thức"
           >
             <Share2 className="w-4 h-4 stroke-[2.5]" />
             <span className="hidden sm:inline">Chia sẻ</span>
-          </button>
-
-          <button
-            onClick={() => setIsCookingModeOpen(true)}
-            className="px-3 py-2 rounded-2xl bg-[#FF8FB8] text-white font-bold text-xs shadow-xs hover:bg-pink-600 transition-all flex items-center gap-1.5"
-            title="Chế độ nấu ăn toàn màn hình"
-          >
-            <Maximize2 className="w-4 h-4 stroke-[2.5]" />
-            <span className="hidden sm:inline">Chế độ nấu</span>
-          </button>
-
-          <button
-            onClick={handleOpenGeneralTimer}
-            className="px-3 py-2 rounded-2xl bg-gradient-to-r from-orange-400 to-amber-500 text-white font-bold text-xs shadow-xs hover:shadow-md transition-all flex items-center gap-1.5"
-          >
-            <Timer className="w-4 h-4 stroke-[2.5]" />
-            <span>Hẹn giờ</span>
           </button>
         </div>
       </div>
@@ -310,17 +231,15 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={handleAddIngredientRow}
-            className="w-full py-3 rounded-2xl border-2 border-dashed border-[#FF8FB8]/60 text-[#FF8FB8] font-bold text-xs hover:bg-pink-50 transition-colors flex items-center justify-center gap-1.5"
-          >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span>Thêm nguyên liệu</span>
-          </button>
+          <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200/60 text-center">
+            <p className="text-xs text-slate-500 font-medium">
+              Chế độ xem chi tiết. Để sửa nguyên liệu hoặc công thức, nhấn biểu tượng chỉnh sửa ở góc trên màn hình.
+            </p>
+          </div>
         </div>
       )}
 
-      {/* Tab Content 2: Định lượng (Portion Calculator Screen 5) */}
+      {/* Tab Content 2: Định lượng (Portion Calculator) */}
       {activeTab === 'dinh_luong' && (
         <div className="p-4 space-y-4">
           {/* Servings Input Section */}
@@ -395,13 +314,12 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
             </p>
           </div>
 
-          {/* Scaled Ingredients Table with Editable Ingredient Amounts */}
+          {/* Scaled Ingredients Table */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-2xs overflow-hidden">
             <div className="grid grid-cols-12 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-500 border-b border-slate-100">
-              <span className="col-span-5">Nguyên liệu</span>
-              <span className="col-span-4 text-center">Định lượng (Nhập đổi)</span>
-              <span className="col-span-2 text-center">Đơn vị</span>
-              <span className="col-span-1 text-right"></span>
+              <span className="col-span-6">Nguyên liệu</span>
+              <span className="col-span-3 text-center">Định lượng (Nhập đổi)</span>
+              <span className="col-span-3 text-right">Đơn vị</span>
             </div>
 
             <div className="divide-y divide-slate-100">
@@ -412,11 +330,11 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                     key={idx}
                     className="grid grid-cols-12 px-3 py-2 text-xs font-semibold text-slate-700 items-center hover:bg-pink-50/30 transition-colors"
                   >
-                    <span className="col-span-5 font-bold text-slate-800 truncate pr-1">
+                    <span className="col-span-6 font-bold text-slate-800 truncate pr-1">
                       {ing.ingredientName}
                     </span>
 
-                    <div className="col-span-4 px-1">
+                    <div className="col-span-3 px-1">
                       <input
                         type="number"
                         step="any"
@@ -427,76 +345,20 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                       />
                     </div>
 
-                    <span className="col-span-2 text-center text-slate-500 text-[11px] font-medium truncate">
+                    <span className="col-span-3 text-right text-slate-500 text-[11px] font-medium truncate">
                       {ing.unit}
                     </span>
-
-                    <button
-                      onClick={() => handleDeleteIngredientRow(idx)}
-                      className="col-span-1 flex justify-end text-rose-400 hover:text-rose-600"
-                      title="Xóa nguyên liệu"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
                   </div>
                 );
               })}
             </div>
           </div>
-
-          <button
-            onClick={handleAddIngredientRow}
-            className="w-full py-3 rounded-2xl border-2 border-dashed border-[#FF8FB8]/60 text-[#FF8FB8] font-bold text-xs hover:bg-pink-50 transition-colors flex items-center justify-center gap-1.5"
-          >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span>Thêm nguyên liệu</span>
-          </button>
         </div>
       )}
 
-      {/* Tab Content 3: Quy trình chế biến (Steps Screen 6) */}
+      {/* Tab Content 3: Quy trình chế biến */}
       {activeTab === 'quy_trinh' && (
         <div className="p-4 space-y-4">
-          {/* Fullscreen Cooking Mode Launch Banner */}
-          <div className="p-4 bg-gradient-to-r from-pink-500 via-rose-400 to-orange-400 rounded-3xl text-white shadow-md flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white flex-shrink-0">
-                <ChefHat className="w-6 h-6 stroke-[2.5]" />
-              </div>
-              <div>
-                <h4 className="text-sm font-black">Chế độ nấu ăn toàn màn hình</h4>
-                <p className="text-xs text-pink-100 font-medium">Chữ to rõ, vuốt chuyển bước & hẹn giờ nấu</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setIsCookingModeOpen(true)}
-              className="px-3.5 py-2 rounded-2xl bg-white text-pink-600 font-black text-xs hover:bg-pink-50 transition-all flex items-center gap-1.5 flex-shrink-0 shadow-xs"
-            >
-              <Maximize2 className="w-4 h-4" />
-              <span>Vào nấu</span>
-            </button>
-          </div>
-
-          {/* Kitchen Timer Quick Banner */}
-          <div className="p-3.5 bg-gradient-to-r from-pink-50 via-orange-50 to-amber-50 rounded-2xl border border-pink-200/80 flex items-center justify-between shadow-2xs">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#FF8FB8] text-white flex items-center justify-center shadow-xs flex-shrink-0">
-                <Timer className="w-5 h-5 stroke-[2.5]" />
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-slate-800">Bộ hẹn giờ nấu ăn</h4>
-                <p className="text-[11px] text-slate-500 font-medium">Đặt thời gian chuẩn xác cho từng bước chế biến</p>
-              </div>
-            </div>
-            <button
-              onClick={handleOpenGeneralTimer}
-              className="px-3 py-1.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors flex items-center gap-1 flex-shrink-0"
-            >
-              <Play className="w-3.5 h-3.5 fill-current" />
-              <span>Bắt đầu</span>
-            </button>
-          </div>
-
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-800">
               Các bước chế biến ({stepsState.length})
@@ -548,31 +410,10 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                       {step.description}
                     </p>
                   </div>
-
-                  {/* Step Specific Timer Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenStepTimer(step);
-                    }}
-                    className="px-2.5 py-1.5 rounded-xl bg-pink-50 text-[#FF8FB8] hover:bg-pink-100 transition-colors flex items-center gap-1 text-[11px] font-bold border border-pink-200/50 flex-shrink-0"
-                    title="Đặt hẹn giờ cho bước này"
-                  >
-                    <Timer className="w-3.5 h-3.5 stroke-[2.5]" />
-                    <span>Hẹn giờ</span>
-                  </button>
                 </div>
               </div>
             ))}
           </div>
-
-          <button
-            onClick={handleAddStep}
-            className="w-full py-3 rounded-2xl border-2 border-dashed border-[#FF8FB8]/60 text-[#FF8FB8] font-bold text-xs hover:bg-pink-50 transition-colors flex items-center justify-center gap-1.5"
-          >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span>Thêm bước chế biến</span>
-          </button>
         </div>
       )}
 
@@ -611,32 +452,9 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
               </div>
             </div>
           </div>
-
-          <button
-            onClick={() => onEditRecipe(recipe.id)}
-            className="w-full py-3.5 rounded-2xl bg-[#FF8FB8] text-white font-bold text-sm shadow-md hover:opacity-95 transition-all flex items-center justify-center gap-2"
-          >
-            <span>Chỉnh sửa toàn bộ công thức</span>
-          </button>
         </div>
       )}
-
-      {/* Kitchen Timer Modal */}
-      <KitchenTimer
-        isOpen={isTimerOpen}
-        onClose={() => setIsTimerOpen(false)}
-        initialTitle={timerTitle}
-        initialMinutes={timerMinutes}
-      />
-
-      {/* Cooking Mode Fullscreen Modal */}
-      <CookingModeModal
-        isOpen={isCookingModeOpen}
-        onClose={() => setIsCookingModeOpen(false)}
-        recipe={recipe}
-        steps={stepsState}
-        onToggleStepDone={toggleStepDone}
-      />
     </div>
   );
 };
+
