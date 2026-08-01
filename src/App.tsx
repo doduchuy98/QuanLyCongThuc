@@ -30,7 +30,9 @@ export default function App() {
   });
 
   const [adminPin, setAdminPin] = useState<string>(() => {
-    return localStorage.getItem('app_admin_pin') || '1234';
+    const saved = localStorage.getItem('app_admin_pin');
+    if (!saved || saved === '1234') return '1004';
+    return saved;
   });
 
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);

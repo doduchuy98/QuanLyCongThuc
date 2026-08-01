@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Upload, Plus, Trash2, Check, Sparkles, Search, Carrot, X, ImageOff, Coins } from 'lucide-react';
 import { Category, IngredientItem, Recipe, RecipeIngredient, CookingStep } from '../types';
-import { calculateRecipeTotalCost, formatCurrency } from '../utils/costUtils';
+import { calculateRecipeTotalCost, getIngredientCostDetails, formatCurrency } from '../utils/costUtils';
+import { CuteDeleteModal } from '../components/CuteDeleteModal';
 
 interface AddEditRecipeViewProps {
   recipeToEdit?: Recipe | null;
@@ -20,6 +21,30 @@ const PRESET_DISH_IMAGES = [
   'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=600&auto=format&fit=crop&q=80',
 ];
 
+const COMMON_UNITS = [
+  'gram',
+  'kg',
+  'ml',
+  'lít',
+  'muỗng cà phê',
+  'muỗng canh',
+  'quả',
+  'củ',
+  'tép',
+  'ổ',
+  'bát',
+  'chén',
+  'lát',
+  'miếng',
+  'gói',
+  'hộp',
+  'chai',
+  'lon',
+  'bó',
+  'nguyên con',
+  'cái'
+];
+
 export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
   recipeToEdit,
   categories,
@@ -33,6 +58,8 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
   const [imageUrl, setImageUrl] = useState(recipeToEdit?.imageUrl || '');
   const [isActive, setIsActive] = useState(recipeToEdit?.isActive ?? true);
   const [portionLabel, setPortionLabel] = useState(recipeToEdit?.portionLabel || '1 phần');
+  const [customUnitRows, setCustomUnitRows] = useState<Record<number, boolean>>({});
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'ingredient' | 'step'; index: number; name: string } | null>(null);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -351,46 +378,124 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
           </div>
         </div>
 
-        <div className="space-y-2">
-          {ingredients.map((ing, idx) => (
-            <div
-              key={idx}
-              className="flex items-center gap-2 p-2 bg-slate-50 rounded-2xl border border-slate-200/80"
-            >
-              <select
-                value={ing.ingredientId}
-                onChange={(e) => handleUpdateIngredient(idx, 'ingredientId', e.target.value)}
-                className="flex-1 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none"
+        <div className="space-y-3">
+          {ingredients.map((ing, idx) => {
+            const costDetails = getIngredientCostDetails(ing, availableIngredients);
+            const masterItem = availableIngredients.find((i) => i.id === ing.ingredientId || i.name === ing.ingredientName);
+            const masterUnit = masterItem?.unit || 'gram';
+
+            return (
+              <div
+                key={idx}
+                className="p-2.5 bg-slate-50/90 rounded-2xl border border-slate-200 space-y-1.5 shadow-2xs"
               >
-                {availableIngredients.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.name} ({i.unit})
-                  </option>
-                ))}
-              </select>
+                {/* Main Inputs Row - Compact Single Line */}
+                <div className="flex items-center gap-1.5">
+                  <select
+                    value={ing.ingredientId}
+                    onChange={(e) => handleUpdateIngredient(idx, 'ingredientId', e.target.value)}
+                    className="flex-1 min-w-0 bg-white border border-slate-200 rounded-xl px-2 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8] truncate"
+                  >
+                    {availableIngredients.map((i) => (
+                      <option key={i.id} value={i.id}>
+                        {i.name} ({i.unit})
+                      </option>
+                    ))}
+                  </select>
 
-              <input
-                type="number"
-                min="0.1"
-                step="any"
-                value={ing.amount === 0 ? '' : ing.amount}
-                onChange={(e) => handleUpdateIngredient(idx, 'amount', e.target.value === '' ? 0 : Number(e.target.value))}
-                className="w-16 bg-white border border-slate-200 rounded-xl px-2 py-1.5 text-xs font-bold text-slate-800 text-center focus:outline-none"
-              />
+                  <div className="w-14 flex-shrink-0">
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="any"
+                      placeholder="SL"
+                      value={ing.amount === 0 ? '' : ing.amount}
+                      onChange={(e) => handleUpdateIngredient(idx, 'amount', e.target.value === '' ? 0 : Number(e.target.value))}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-1 py-1.5 text-xs font-bold text-slate-800 text-center focus:outline-none focus:ring-2 focus:ring-[#FF8FB8]"
+                    />
+                  </div>
 
-              <span className="text-xs font-semibold text-slate-500 w-12 text-center truncate">
-                {ing.unit}
-              </span>
+                  {/* Compact Unit Selector */}
+                  <div className="w-22 flex-shrink-0 relative">
+                    {customUnitRows[idx] ? (
+                      <div className="flex items-center gap-0.5">
+                        <input
+                          type="text"
+                          placeholder="Đơn vị..."
+                          value={ing.unit}
+                          onChange={(e) => handleUpdateIngredient(idx, 'unit', e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-1 py-1 text-[11px] font-bold text-slate-800 text-center focus:outline-none focus:ring-2 focus:ring-[#FF8FB8]"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setCustomUnitRows((prev) => ({ ...prev, [idx]: false }))}
+                          className="text-[10px] font-bold text-slate-400 hover:text-slate-600 px-0.5"
+                          title="Chọn từ danh sách"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <select
+                        value={ing.unit}
+                        onChange={(e) => {
+                          if (e.target.value === '__custom__') {
+                            setCustomUnitRows((prev) => ({ ...prev, [idx]: true }));
+                          } else {
+                            handleUpdateIngredient(idx, 'unit', e.target.value);
+                          }
+                        }}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-1.5 py-1.5 text-[11px] font-bold text-slate-800 text-center focus:outline-none focus:ring-2 focus:ring-[#FF8FB8] truncate"
+                      >
+                        {(() => {
+                          const optionsSet = new Set<string>(COMMON_UNITS);
+                          if (masterUnit) optionsSet.add(masterUnit);
+                          if (ing.unit) optionsSet.add(ing.unit);
 
-              <button
-                type="button"
-                onClick={() => handleRemoveIngredient(idx)}
-                className="w-7 h-7 text-rose-400 hover:text-rose-600 flex items-center justify-center"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+                          return Array.from(optionsSet).map((u) => (
+                            <option key={u} value={u}>
+                              {u} {u === masterUnit ? '(gốc)' : ''}
+                            </option>
+                          ));
+                        })()}
+                        <option value="__custom__">✍️ Tự nhập...</option>
+                      </select>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget({ type: 'ingredient', index: idx, name: ing.ingredientName || 'nguyên liệu này' })}
+                    className="w-7 h-7 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-100 flex items-center justify-center flex-shrink-0 transition-colors"
+                    title="Xóa dòng nguyên liệu"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Calculated Cost & Unit conversion details Footer */}
+                <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200/60 px-0.5">
+                  <div className="flex items-center gap-1.5 text-[10.5px]">
+                    {costDetails.isConverted ? (
+                      <span className="bg-sky-100 text-sky-800 font-bold px-1.5 py-0.5 rounded-md text-[10px] border border-sky-300/70 flex items-center gap-1">
+                        <span>⚡ Quy đổi:</span>
+                        <span>{ing.amount} {ing.unit} = {costDetails.convertedAmount} {costDetails.masterUnit}</span>
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">
+                        Giá gốc: {costDetails.masterPrice.toLocaleString('vi-VN')}đ/{costDetails.masterUnit}
+                      </span>
+                    )}
+                  </div>
+
+                  <span className="font-black text-emerald-600 text-[11px] bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200/60 ml-auto">
+                    = {formatCurrency(costDetails.cost)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Live Total Cost Calculation Banner */}
@@ -446,10 +551,11 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
                 </span>
                 <button
                   type="button"
-                  onClick={() => handleRemoveStep(idx)}
-                  className="text-rose-400 hover:text-rose-600 text-xs font-bold"
+                  onClick={() => setDeleteTarget({ type: 'step', index: idx, name: st.title || `Bước ${idx + 1}` })}
+                  className="text-rose-400 hover:text-rose-600 text-xs font-bold flex items-center gap-1"
                 >
-                  Xóa
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Xóa</span>
                 </button>
               </div>
 
@@ -577,6 +683,24 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* CUTE DELETE MODAL */}
+      <CuteDeleteModal
+        isOpen={!!deleteTarget}
+        itemName={deleteTarget?.name}
+        itemType={deleteTarget?.type === 'ingredient' ? 'dòng nguyên liệu' : 'bước quy trình'}
+        onConfirm={() => {
+          if (deleteTarget) {
+            if (deleteTarget.type === 'ingredient') {
+              handleRemoveIngredient(deleteTarget.index);
+            } else {
+              handleRemoveStep(deleteTarget.index);
+            }
+            setDeleteTarget(null);
+          }
+        }}
+        onClose={() => setDeleteTarget(null)}
+      />
     </form>
   );
 };

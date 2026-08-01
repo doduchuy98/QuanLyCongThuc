@@ -16,10 +16,14 @@ import {
   Milk,
   Beef,
   Wheat,
-  Heart,
-  AlertCircle,
+  Scale,
+  Droplets,
+  UtensilsCrossed,
+  Box,
+  Ruler,
 } from 'lucide-react';
 import { Category, IngredientItem, Recipe } from '../types';
+import { CuteDeleteModal } from '../components/CuteDeleteModal';
 
 interface CategoriesViewProps {
   categories: Category[];
@@ -42,11 +46,11 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
   onAddCategory,
   onDeleteCategory,
 }) => {
-  const [activeTab, setActiveTab] = useState<'recipe' | 'ingredient'>('recipe');
+  const [activeTab, setActiveTab] = useState<'recipe' | 'ingredient' | 'unit'>('recipe');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [selectedBgColor, setSelectedBgColor] = useState('#FFD9E8');
-  const [targetCatType, setTargetCatType] = useState<'recipe' | 'ingredient'>('recipe');
+  const [targetCatType, setTargetCatType] = useState<'recipe' | 'ingredient' | 'unit'>('recipe');
 
   // Cute Warning Popup state for category deletion
   const [catToDelete, setCatToDelete] = useState<Category | null>(null);
@@ -64,6 +68,11 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
     Wheat,
     Sparkles,
     Milk,
+    Scale,
+    Droplets,
+    UtensilsCrossed,
+    Box,
+    Ruler,
   };
 
   const getRecipeCount = (catName: string) => {
@@ -74,20 +83,68 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
     return ingredients.filter((i) => i.category === catName).length;
   };
 
-  // Filter categories by tab type
-  const recipeCats = categories.filter((c) => c.type !== 'ingredient');
-  const ingredientCats = categories.filter((c) => c.type === 'ingredient');
+  const getUnitUsageCount = (catName: string) => {
+    const lower = catName.toLowerCase();
+    if (lower.includes('khối lượng') || lower.includes('gram') || lower.includes('kg')) {
+      return ingredients.filter((i) => ['gram', 'g', 'kg', 'kilogram'].includes(i.unit.toLowerCase())).length;
+    }
+    if (lower.includes('thể tích') || lower.includes('ml') || lower.includes('lít')) {
+      return ingredients.filter((i) => ['ml', 'lít', 'l'].includes(i.unit.toLowerCase())).length;
+    }
+    if (lower.includes('đong đếm') || lower.includes('muỗng') || lower.includes('chén') || lower.includes('bát')) {
+      return ingredients.filter((i) => i.unit.toLowerCase().includes('muỗng') || i.unit.toLowerCase().includes('chén') || i.unit.toLowerCase().includes('bát')).length;
+    }
+    return ingredients.filter((i) => ['quả', 'trái', 'củ', 'tép', 'ổ', 'lát', 'miếng', 'gói', 'hộp', 'chai', 'lon', 'bó', 'nguyên con', 'cái'].some(u => i.unit.toLowerCase().includes(u))).length;
+  };
 
-  const displayedCategories = activeTab === 'recipe' ? recipeCats : ingredientCats;
+  // Filter categories by tab type
+  const recipeCats = categories.filter((c) => c.type !== 'ingredient' && c.type !== 'unit');
+  const ingredientCats = categories.filter((c) => c.type === 'ingredient');
+  const unitCats = categories.filter((c) => c.type === 'unit');
+
+  // Distinct units extracted from ingredients list & unit categories
+  const getUnitIngredientsMap = () => {
+    const map: Record<string, IngredientItem[]> = {};
+
+    // First collect all units used in ingredients
+    ingredients.forEach((ing) => {
+      const u = ing.unit?.trim();
+      if (!u) return;
+      if (!map[u]) map[u] = [];
+      map[u].push(ing);
+    });
+
+    // Also include unit categories created manually if not present
+    unitCats.forEach((cat) => {
+      if (!map[cat.name]) {
+        map[cat.name] = [];
+      }
+    });
+
+    return map;
+  };
+
+  const unitMap = getUnitIngredientsMap();
+  const sortedUnitNames = Object.keys(unitMap).sort((a, b) => {
+    // Show units with ingredients first, then by count descending
+    return unitMap[b].length - unitMap[a].length;
+  });
+
+  const displayedCategories =
+    activeTab === 'recipe' ? recipeCats : activeTab === 'ingredient' ? ingredientCats : unitCats;
 
   const handleCreateCategory = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCatName.trim()) return;
 
+    let defaultIcon = 'Utensils';
+    if (targetCatType === 'ingredient') defaultIcon = 'Carrot';
+    if (targetCatType === 'unit') defaultIcon = 'Ruler';
+
     const newCat: Category = {
       id: `cat-${Date.now()}`,
       name: newCatName.trim(),
-      iconName: targetCatType === 'ingredient' ? 'Carrot' : 'Utensils',
+      iconName: defaultIcon,
       bgColor: selectedBgColor,
       recipeCount: 0,
       type: targetCatType,
@@ -109,6 +166,12 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
     setTimeout(() => setToastMsg(null), 3000);
   };
 
+  const getTabLabel = (tab: 'recipe' | 'ingredient' | 'unit') => {
+    if (tab === 'recipe') return 'Món ăn';
+    if (tab === 'ingredient') return 'Nguyên liệu';
+    return 'Đơn vị tính';
+  };
+
   return (
     <div className="p-4 space-y-4 pb-28 animate-fade-in">
       {/* Toast notification banner */}
@@ -121,36 +184,161 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
         </div>
       )}
 
-      {/* Main Categories Tab Switcher */}
-      <div className="flex bg-slate-200/70 p-1 rounded-2xl">
+      {/* Main Categories 3-Tab Switcher */}
+      <div className="flex bg-slate-200/70 p-1 rounded-2xl gap-1">
         <button
           onClick={() => setActiveTab('recipe')}
-          className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-2 rounded-xl font-extrabold text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'recipe'
               ? 'bg-white text-slate-800 shadow-xs'
               : 'text-slate-500 hover:text-slate-700'
           }`}
         >
-          <Utensils className="w-4 h-4 text-[#FF8FB8]" />
-          <span>Danh mục Món ăn ({recipeCats.length})</span>
+          <Utensils className="w-3.5 h-3.5 text-[#FF8FB8]" />
+          <span>Món ăn ({recipeCats.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('ingredient')}
-          className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-2 rounded-xl font-extrabold text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'ingredient'
               ? 'bg-white text-slate-800 shadow-xs'
               : 'text-slate-500 hover:text-slate-700'
           }`}
         >
-          <Carrot className="w-4 h-4 text-amber-500" />
-          <span>Danh mục Nguyên liệu ({ingredientCats.length})</span>
+          <Carrot className="w-3.5 h-3.5 text-amber-500" />
+          <span>Nguyên liệu ({ingredientCats.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('unit')}
+          className={`flex-1 py-2 rounded-xl font-extrabold text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1.5 ${
+            activeTab === 'unit'
+              ? 'bg-white text-slate-800 shadow-xs'
+              : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <Ruler className="w-3.5 h-3.5 text-sky-500" />
+          <span>Đơn vị tính ({sortedUnitNames.length})</span>
         </button>
       </div>
 
-      {/* Categories List */}
+      {/* Categories / Units List */}
       <div className="space-y-3">
-        {displayedCategories.length === 0 ? (
+        {activeTab === 'unit' ? (
+          sortedUnitNames.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-slate-200 p-6">
+              <Sparkles className="w-10 h-10 text-pink-300 mx-auto mb-2" />
+              <p className="text-sm font-bold text-slate-700">Chưa có đơn vị tính nào</p>
+              <p className="text-xs text-slate-400 mt-0.5 mb-3">Thêm nguyên liệu mới để tạo đơn vị tính nhé!</p>
+              <button
+                onClick={() => {
+                  if (isAdmin) {
+                    setTargetCatType('unit');
+                    setIsAddModalOpen(true);
+                  } else if (onOpenAdminLogin) {
+                    onOpenAdminLogin();
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-[#FF8FB8] text-white font-bold text-xs shadow-sm hover:opacity-90"
+              >
+                + Thêm đơn vị tính
+              </button>
+            </div>
+          ) : (
+            sortedUnitNames.map((unitName) => {
+              const matchedIngs = unitMap[unitName] || [];
+              const uLower = unitName.toLowerCase();
+              
+              let IconComp = Ruler;
+              let bg = '#FFD9E8';
+              if (uLower.includes('g') || uLower.includes('gram') || uLower.includes('kg') || uLower.includes('khối lượng')) {
+                IconComp = Scale;
+                bg = '#FFECA8';
+              } else if (uLower.includes('ml') || uLower.includes('lít') || uLower.includes('l') || uLower.includes('thể tích')) {
+                IconComp = Droplets;
+                bg = '#AEE9FF';
+              } else if (uLower.includes('muỗng') || uLower.includes('chén') || uLower.includes('bát') || uLower.includes('thìa')) {
+                IconComp = UtensilsCrossed;
+                bg = '#FFC8A2';
+              } else if (['quả', 'trái', 'củ', 'tép', 'ổ', 'lát', 'miếng', 'gói', 'hộp', 'chai', 'lon', 'bó', 'nguyên con', 'cái'].some(u => uLower.includes(u))) {
+                IconComp = Box;
+                bg = '#D9F7BE';
+              }
+
+              // Check if matching custom unit category for delete option
+              const matchingCat = unitCats.find(c => c.name.toLowerCase() === unitName.toLowerCase());
+
+              return (
+                <div
+                  key={unitName}
+                  className="p-3.5 rounded-[22px] bg-white border border-slate-100 shadow-2xs hover:shadow-md transition-all space-y-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3.5">
+                      <div
+                        style={{ backgroundColor: bg }}
+                        className="w-12 h-12 rounded-2xl flex items-center justify-center text-slate-800 shadow-2xs"
+                      >
+                        <IconComp className="w-6 h-6 stroke-[2]" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                          <span>{unitName}</span>
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                            Đơn vị
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {matchedIngs.length > 0
+                            ? `${matchedIngs.length} nguyên liệu trong kho dùng đơn vị này`
+                            : 'Chưa có nguyên liệu nào gán'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {matchingCat && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isAdmin) {
+                            setCatToDelete(matchingCat);
+                          } else if (onOpenAdminLogin) {
+                            onOpenAdminLogin();
+                          }
+                        }}
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                        title="Xóa đơn vị tính"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* List ingredients using this unit */}
+                  {matchedIngs.length > 0 && (
+                    <div className="pt-1 flex flex-wrap gap-1.5 pl-15">
+                      {matchedIngs.slice(0, 6).map((ing) => (
+                        <span
+                          key={ing.id}
+                          className="px-2 py-0.5 rounded-lg bg-slate-50 border border-slate-200/60 text-[11px] font-semibold text-slate-600 flex items-center gap-1"
+                        >
+                          <span>🥕</span>
+                          <span>{ing.name}</span>
+                        </span>
+                      ))}
+                      {matchedIngs.length > 6 && (
+                        <span className="px-2 py-0.5 rounded-lg bg-pink-50 text-[11px] font-bold text-[#FF8FB8]">
+                          +{matchedIngs.length - 6} nguyên liệu khác
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )
+        ) : displayedCategories.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-slate-200 p-6">
             <Sparkles className="w-10 h-10 text-pink-300 mx-auto mb-2" />
             <p className="text-sm font-bold text-slate-700">Chưa có danh mục nào ở đây</p>
@@ -166,14 +354,21 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
               }}
               className="px-4 py-2 rounded-xl bg-[#FF8FB8] text-white font-bold text-xs shadow-sm hover:opacity-90"
             >
-              + Thêm danh mục mới
+              + Thêm danh mục {getTabLabel(activeTab)}
             </button>
           </div>
         ) : (
           displayedCategories.map((cat) => {
-            const IconComponent = ICON_MAP[cat.iconName] || (activeTab === 'ingredient' ? Carrot : Utensils);
-            const count =
-              activeTab === 'recipe' ? getRecipeCount(cat.name) : getIngredientCount(cat.name);
+            const IconComponent =
+              ICON_MAP[cat.iconName] ||
+              (activeTab === 'unit' ? Ruler : activeTab === 'ingredient' ? Carrot : Utensils);
+
+            const countText =
+              activeTab === 'recipe'
+                ? `${getRecipeCount(cat.name)} công thức món`
+                : activeTab === 'ingredient'
+                ? `${getIngredientCount(cat.name)} loại nguyên liệu`
+                : `${getUnitUsageCount(cat.name)} nguyên liệu đang dùng`;
 
             return (
               <div
@@ -196,9 +391,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
                     <h3 className="font-bold text-slate-800 text-sm group-hover:text-[#FF8FB8] transition-colors">
                       {cat.name}
                     </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {count} {activeTab === 'recipe' ? 'công thức món' : 'loại nguyên liệu'}
-                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">{countText}</p>
                   </div>
                 </div>
 
@@ -242,7 +435,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
           className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#FF8FB8] to-[#FF6B9D] text-white font-bold text-sm shadow-md shadow-pink-200 hover:opacity-95 active:scale-[0.99] transition-all flex items-center justify-center gap-2"
         >
           <Plus className="w-5 h-5 stroke-[2.5]" />
-          <span>Thêm danh mục {activeTab === 'recipe' ? 'Món ăn' : 'Nguyên liệu'}</span>
+          <span>Thêm danh mục {getTabLabel(activeTab)}</span>
         </button>
       </div>
 
@@ -265,7 +458,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Loại danh mục
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-1.5">
                   <button
                     type="button"
                     onClick={() => setTargetCatType('recipe')}
@@ -288,6 +481,17 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
                   >
                     🥕 Nguyên liệu
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setTargetCatType('unit')}
+                    className={`py-2 rounded-xl text-xs font-bold border ${
+                      targetCatType === 'unit'
+                        ? 'bg-sky-50 border-sky-400 text-sky-600'
+                        : 'bg-white border-slate-200 text-slate-600'
+                    }`}
+                  >
+                    📏 Đơn vị tính
+                  </button>
                 </div>
               </div>
 
@@ -298,7 +502,13 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder={targetCatType === 'recipe' ? 'Ví dụ: Món nướng, Món lẩu...' : 'Ví dụ: Thịt tươi, Rau củ, Gia vị...'}
+                  placeholder={
+                    targetCatType === 'recipe'
+                      ? 'Ví dụ: Món nướng, Món lẩu...'
+                      : targetCatType === 'ingredient'
+                      ? 'Ví dụ: Thịt tươi, Rau củ, Gia vị...'
+                      : 'Ví dụ: Thể tích, Khối lượng, Đóng gói...'
+                  }
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8]"
@@ -340,52 +550,14 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
         </div>
       )}
 
-      {/* CUTE WARNING POPUP FOR DELETING CATEGORY */}
-      {catToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-fade-in">
-          <div className="relative w-full max-w-[360px] bg-white rounded-[32px] p-6 shadow-2xl border-2 border-pink-200 text-center animate-scale-up">
-            {/* Cute floating icon header */}
-            <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-pink-100 to-rose-100 border-2 border-pink-200 mx-auto flex items-center justify-center text-3xl shadow-inner mb-3 animate-bounce">
-              🐱
-            </div>
-
-            <h3 className="font-black text-slate-800 text-base mb-1">
-              Hế lô bạn ơi! Bạn chắc chắn muốn xóa chứ? 🥺
-            </h3>
-
-            <p className="text-xs font-semibold text-slate-600 leading-relaxed mb-4">
-              Danh mục <span className="font-extrabold text-[#FF8FB8]">"{catToDelete.name}"</span> đang được lưu trữ. Bạn xóa đi rồi là không khôi phục lại được đâu nè! 💔
-            </p>
-
-            <div className="bg-pink-50/70 p-3 rounded-2xl border border-pink-100 text-[11px] font-bold text-slate-600 mb-5 flex items-center justify-center gap-1.5">
-              <Heart className="w-3.5 h-3.5 text-pink-400 fill-pink-400" />
-              <span>
-                {catToDelete.type === 'ingredient'
-                  ? `Đang có ${getIngredientCount(catToDelete.name)} nguyên liệu thuộc nhóm này`
-                  : `Đang có ${getRecipeCount(catToDelete.name)} công thức món ăn`}
-              </span>
-            </div>
-
-            {/* Action buttons */}
-            <div className="space-y-2">
-              <button
-                onClick={confirmDeleteCategory}
-                className="w-full py-3 rounded-2xl bg-gradient-to-r from-rose-400 to-rose-500 text-white font-extrabold text-xs shadow-md hover:opacity-95 transition-all flex items-center justify-center gap-1.5"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Vẫn xóa nha! (Tạm biệt)</span>
-              </button>
-
-              <button
-                onClick={() => setCatToDelete(null)}
-                className="w-full py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all flex items-center justify-center gap-1"
-              >
-                <span>🌸 Hủy nha, giữ lại nè!</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* CUTE DELETE MODAL */}
+      <CuteDeleteModal
+        isOpen={!!catToDelete}
+        itemName={catToDelete?.name}
+        itemType="danh mục"
+        onConfirm={confirmDeleteCategory}
+        onClose={() => setCatToDelete(null)}
+      />
     </div>
   );
 };

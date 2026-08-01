@@ -78,7 +78,7 @@ export const ChangePinModal: React.FC<ChangePinModalProps> = ({
               <label className="block text-[11px] font-bold text-slate-700 mb-1">Mã PIN cũ</label>
               <input
                 type="password"
-                placeholder="Nhập PIN cũ (Mặc định: 1234)"
+                placeholder="Nhập mã PIN hiện tại..."
                 value={oldPinInput}
                 onChange={(e) => setOldPinInput(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8]"

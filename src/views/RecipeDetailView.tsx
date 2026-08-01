@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, CheckCircle2, Clock, ChefHat, Sparkles, Share2, Users, RotateCcw, Pencil, ImageOff, Coins, Calculator, TrendingUp, Info } from 'lucide-react';
 import { Recipe, CookingStep, IngredientItem } from '../types';
 import { shareRecipeData } from '../utils/shareUtils';
-import { calculateIngredientCost, calculateRecipeTotalCost, formatCurrency } from '../utils/costUtils';
+import { calculateIngredientCost, calculateRecipeTotalCost, getIngredientCostDetails, formatCurrency } from '../utils/costUtils';
 
 interface RecipeDetailViewProps {
   recipe: Recipe;
@@ -318,12 +318,8 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
             {/* Big Numbers Row */}
             {(() => {
               const rawTotalCost = recipe.ingredients.reduce((sum, ing) => {
-                const amount = ing.amount * portionMultiplier;
-                const price =
-                  ing.pricePerUnit ??
-                  allIngredients.find((item) => item.id === ing.ingredientId || item.name === ing.ingredientName)?.pricePerUnit ??
-                  0;
-                return sum + amount * price;
+                const scaledIng = { ...ing, amount: ing.amount * portionMultiplier };
+                return sum + calculateIngredientCost(scaledIng, allIngredients);
               }, 0);
 
               const costPerPortion = servings > 0 ? Math.round(rawTotalCost / servings) : 0;
@@ -424,16 +420,15 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
               <div className="grid grid-cols-12 bg-slate-50/80 px-3 py-2 text-[10px] font-bold text-slate-500 border-b border-slate-100">
                 <span className="col-span-4">Nguyên liệu</span>
                 <span className="col-span-2 text-center">Lượng</span>
-                <span className="col-span-3 text-center">Đơn giá (đ)</span>
+                <span className="col-span-3 text-center">Đơn giá gốc</span>
                 <span className="col-span-3 text-right">Thành tiền</span>
               </div>
 
               <div className="divide-y divide-slate-100">
                 {recipe.ingredients.map((ing, idx) => {
                   const currentAmount = Math.round(ing.amount * portionMultiplier * 10) / 10;
-                  const masterMatch = allIngredients.find((item) => item.id === ing.ingredientId || item.name === ing.ingredientName);
-                  const effectiveUnitPrice = ing.pricePerUnit ?? masterMatch?.pricePerUnit ?? 0;
-                  const ingredientCost = Math.round(currentAmount * effectiveUnitPrice);
+                  const scaledIng = { ...ing, amount: currentAmount };
+                  const costDetails = getIngredientCostDetails(scaledIng, allIngredients);
 
                   return (
                     <div
@@ -444,7 +439,14 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                         <span className="font-bold text-slate-800 block truncate" title={ing.ingredientName}>
                           {ing.ingredientName}
                         </span>
-                        <span className="text-[10px] text-slate-400 font-normal">{ing.unit}</span>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="text-[10px] text-slate-400 font-normal">{ing.unit}</span>
+                          {costDetails.isConverted && (
+                            <span className="text-[9.5px] font-extrabold text-sky-700 bg-sky-50 px-1 rounded border border-sky-200">
+                              ⚡ {costDetails.convertedAmount} {costDetails.masterUnit}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <span className="col-span-2 text-center text-slate-700 font-bold">
@@ -457,7 +459,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                           type="number"
                           min="0"
                           step="any"
-                          value={effectiveUnitPrice === 0 ? '' : effectiveUnitPrice}
+                          value={costDetails.masterPrice === 0 ? '' : costDetails.masterPrice}
                           placeholder="0"
                           onChange={(e) => {
                             const val = e.target.value === '' ? 0 : Number(e.target.value);
@@ -467,12 +469,12 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                             onUpdateRecipe({ ...recipe, ingredients: updatedIngs });
                           }}
                           className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF8FB8] focus:bg-white text-slate-800 text-center rounded-lg py-1 px-1 text-xs font-bold outline-none"
-                          title="Chạm vào để thay đổi đơn giá nguyên liệu"
+                          title={`Đơn giá gốc (${costDetails.masterUnit})`}
                         />
                       </div>
 
-                      <span className="col-span-3 text-right font-black text-slate-800">
-                        {ingredientCost > 0 ? formatCurrency(ingredientCost) : <span className="text-slate-300 font-normal">Chưa có giá</span>}
+                      <span className="col-span-3 text-right font-black text-emerald-600">
+                        {costDetails.cost > 0 ? formatCurrency(costDetails.cost) : <span className="text-slate-300 font-normal">Chưa có giá</span>}
                       </span>
                     </div>
                   );

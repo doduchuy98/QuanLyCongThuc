@@ -82,6 +82,39 @@ export const INITIAL_CATEGORIES: Category[] = [
     recipeCount: 0,
     type: 'ingredient',
   },
+  // Unit Categories
+  {
+    id: 'ucat-1',
+    name: 'Khối lượng (gram, kg)',
+    iconName: 'Scale',
+    bgColor: '#FFECA8',
+    recipeCount: 0,
+    type: 'unit',
+  },
+  {
+    id: 'ucat-2',
+    name: 'Thể tích (ml, lít)',
+    iconName: 'Droplets',
+    bgColor: '#AEE9FF',
+    recipeCount: 0,
+    type: 'unit',
+  },
+  {
+    id: 'ucat-3',
+    name: 'Đong đếm (muỗng, bát, chén)',
+    iconName: 'UtensilsCrossed',
+    bgColor: '#FFD9E8',
+    recipeCount: 0,
+    type: 'unit',
+  },
+  {
+    id: 'ucat-4',
+    name: 'Đếm chiếc / Đóng gói (quả, củ, ổ, gói, chai...)',
+    iconName: 'Box',
+    bgColor: '#D9F7BE',
+    recipeCount: 0,
+    type: 'unit',
+  },
 ];
 
 export const INITIAL_INGREDIENTS: IngredientItem[] = [

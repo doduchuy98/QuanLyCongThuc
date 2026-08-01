@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Filter, Plus, ChevronRight, Carrot, Trash2 } from 'lucide-react';
 import { IngredientItem } from '../types';
+import { CuteDeleteModal } from '../components/CuteDeleteModal';
 
 interface IngredientsViewProps {
   ingredients: IngredientItem[];
@@ -21,6 +22,7 @@ export const IngredientsView: React.FC<IngredientsViewProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUnitFilter, setSelectedUnitFilter] = useState('Tất cả');
+  const [ingToDelete, setIngToDelete] = useState<IngredientItem | null>(null);
 
   const filtered = ingredients.filter((ing) => {
     const matchesSearch = ing.name
@@ -31,8 +33,36 @@ export const IngredientsView: React.FC<IngredientsViewProps> = ({
     return matchesSearch && matchesUnit;
   });
 
+  const ingredientsWithPriceCount = ingredients.filter(i => i.pricePerUnit !== undefined && i.pricePerUnit > 0).length;
+
   return (
     <div className="p-4 space-y-4 pb-28 animate-fade-in">
+      {/* Price Info Banner */}
+      <div className="bg-gradient-to-r from-emerald-50 via-teal-50/60 to-white p-3.5 rounded-2xl border border-emerald-200/60 flex items-center justify-between shadow-2xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+            💵
+          </div>
+          <div>
+            <h4 className="text-xs font-extrabold text-emerald-950">Quản Lý Giá Vốn Nguyên Liệu</h4>
+            <p className="text-[11px] text-emerald-700">Đã cập nhật giá: <span className="font-bold">{ingredientsWithPriceCount} / {ingredients.length}</span> nguyên liệu</p>
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            if (isAdmin) {
+              onAddIngredient();
+            } else if (onOpenAdminLogin) {
+              onOpenAdminLogin();
+            }
+          }}
+          className="px-2.5 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-colors shadow-2xs flex items-center gap-1"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Thêm giá mới</span>
+        </button>
+      </div>
+
       {/* Search Bar & Filter Button */}
       <div className="flex gap-2">
         <div className="relative flex-1">
@@ -113,14 +143,18 @@ export const IngredientsView: React.FC<IngredientsViewProps> = ({
                   <h3 className="font-bold text-slate-800 text-sm group-hover:text-[#FF8FB8] transition-colors">
                     {ing.name}
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                  <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-2 flex-wrap">
                     <span>Đơn vị: <span className="font-semibold text-slate-600">{ing.unit}</span></span>
-                    {ing.pricePerUnit !== undefined && ing.pricePerUnit > 0 && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200/60">
-                        {new Intl.NumberFormat('vi-VN').format(ing.pricePerUnit)}đ/{ing.unit}
+                    {ing.pricePerUnit !== undefined && ing.pricePerUnit > 0 ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 font-extrabold text-[11px] border border-emerald-300/80 shadow-2xs">
+                        💰 {new Intl.NumberFormat('vi-VN').format(ing.pricePerUnit)} đ / {ing.unit}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 font-semibold text-[10px] border border-amber-200">
+                        Chưa có giá vốn
                       </span>
                     )}
-                  </p>
+                  </div>
                 </div>
               </div>
 
@@ -129,9 +163,7 @@ export const IngredientsView: React.FC<IngredientsViewProps> = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     if (isAdmin) {
-                      if (confirm(`Xóa nguyên liệu "${ing.name}"?`)) {
-                        onDeleteIngredient(ing.id);
-                      }
+                      setIngToDelete(ing);
                     } else if (onOpenAdminLogin) {
                       onOpenAdminLogin();
                     }
@@ -147,6 +179,19 @@ export const IngredientsView: React.FC<IngredientsViewProps> = ({
           ))
         )}
       </div>
+
+      <CuteDeleteModal
+        isOpen={!!ingToDelete}
+        itemName={ingToDelete?.name}
+        itemType="nguyên liệu"
+        onConfirm={() => {
+          if (ingToDelete) {
+            onDeleteIngredient(ingToDelete.id);
+            setIngToDelete(null);
+          }
+        }}
+        onClose={() => setIngToDelete(null)}
+      />
     </div>
   );
 };

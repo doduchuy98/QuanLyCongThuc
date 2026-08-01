@@ -30,7 +30,7 @@ export interface Category {
   iconName: string; // lucide icon name
   bgColor: string; // hex or tailwind class
   recipeCount: number;
-  type?: 'recipe' | 'ingredient';
+  type?: 'recipe' | 'ingredient' | 'unit';
   itemCount?: number;
 }
 

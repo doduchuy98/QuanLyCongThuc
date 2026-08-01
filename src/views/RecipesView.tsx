@@ -3,6 +3,7 @@ import { Search, MoreVertical, Plus, ChefHat, ArrowUpDown, Star, Calendar, Check
 import { Category, IngredientItem, Recipe } from '../types';
 import { shareRecipeData } from '../utils/shareUtils';
 import { calculateRecipeTotalCost, formatCurrency } from '../utils/costUtils';
+import { CuteDeleteModal } from '../components/CuteDeleteModal';
 
 export type SortOption = 'date_desc' | 'date_asc' | 'name_asc' | 'name_desc' | 'rating_desc';
 
@@ -66,6 +67,7 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
   const [isSortMenuOpen, setIsSortMenuOpen] = useState<boolean>(false);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [shareToast, setShareToast] = useState<string | null>(null);
+  const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null);
 
   const handleShareRecipe = async (r: Recipe, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -358,9 +360,7 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
                       onClick={() => {
                         setActiveMenuId(null);
                         if (isAdmin) {
-                          if (confirm(`Bạn có chắc muốn xóa công thức "${recipe.title}"?`)) {
-                            onDeleteRecipe(recipe.id);
-                          }
+                          setRecipeToDelete(recipe);
                         } else {
                           handleProtectedDeleteRecipe(recipe.id);
                         }
@@ -376,6 +376,19 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
           ))
         )}
       </div>
+
+      <CuteDeleteModal
+        isOpen={!!recipeToDelete}
+        itemName={recipeToDelete?.title}
+        itemType="công thức món"
+        onConfirm={() => {
+          if (recipeToDelete) {
+            onDeleteRecipe(recipeToDelete.id);
+            setRecipeToDelete(null);
+          }
+        }}
+        onClose={() => setRecipeToDelete(null)}
+      />
     </div>
   );
 };

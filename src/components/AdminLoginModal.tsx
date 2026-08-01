@@ -31,7 +31,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       setErrorMsg('');
       onClose();
     } else {
-      setErrorMsg('Mã PIN không đúng! Vui lòng thử lại (mặc định: 1234)');
+      setErrorMsg('Mã PIN không đúng! Vui lòng thử lại.');
     }
   };
 
@@ -60,9 +60,8 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
         {/* PIN Form */}
         <form onSubmit={handleSubmit} className="space-y-3 pt-1">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+            <label className="block text-xs font-bold text-slate-700 mb-1">
               <span>Mã PIN xác thực</span>
-              <span className="text-[10px] text-pink-500 font-normal">Mặc định: 1234</span>
             </label>
             <div className="relative">
               <input

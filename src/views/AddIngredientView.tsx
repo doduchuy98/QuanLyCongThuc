@@ -34,6 +34,7 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
     ingredientToEdit?.imageUrl || PRESET_INGREDIENT_IMAGES[0]
   );
   const [isActive, setIsActive] = useState(ingredientToEdit?.isActive ?? true);
+  const [isCustomUnit, setIsCustomUnit] = useState(false);
 
   // Preset library filter state
   const [libraryFilterCategory, setLibraryFilterCategory] = useState<string>('Tất cả');
@@ -53,9 +54,11 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
     setUnit(preset.unit);
     setCategory(preset.category);
     setImageUrl(preset.imageUrl);
+    if (preset.pricePerUnit !== undefined) setPricePerUnit(preset.pricePerUnit);
     if (preset.note) setNote(preset.note);
 
-    setAutoFilledNotice(`Đã chọn tự động: "${preset.name}" (${preset.unit}) ✨`);
+    const priceText = preset.pricePerUnit ? ` • Giá: ${preset.pricePerUnit.toLocaleString('vi-VN')}đ/${preset.unit}` : '';
+    setAutoFilledNotice(`Đã chọn tự động: "${preset.name}" (${preset.unit})${priceText} ✨`);
     setTimeout(() => setAutoFilledNotice(null), 3000);
   };
 
@@ -214,25 +217,64 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
             <label className="block text-xs font-bold text-slate-700 mb-1">
               Đơn vị tính <span className="text-rose-500">*</span>
             </label>
-            <select
-              value={unit}
-              onChange={(e) => setUnit(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8] focus:bg-white"
-            >
-              <option value="gram">gram (g)</option>
-              <option value="kg">kilogram (kg)</option>
-              <option value="ml">milliliter (ml)</option>
-              <option value="lít">lít (l)</option>
-              <option value="muỗng cà phê">muỗng cà phê (tsp)</option>
-              <option value="muỗng canh">muỗng canh (tbsp)</option>
-              <option value="chén / bát">chén / bát</option>
-              <option value="quả">quả / trái</option>
-              <option value="cái">cái</option>
-              <option value="ổ">ổ</option>
-              <option value="bó">bó</option>
-              <option value="tép">tép</option>
-              <option value="củ">củ</option>
-            </select>
+            {isCustomUnit ? (
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  required
+                  placeholder="Nhập đơn vị mới..."
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8] focus:bg-white"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsCustomUnit(false)}
+                  className="px-2.5 py-2.5 text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-2xl transition-colors"
+                  title="Chọn từ danh sách"
+                >
+                  Danh sách
+                </button>
+              </div>
+            ) : (
+              <select
+                value={unit}
+                onChange={(e) => {
+                  if (e.target.value === '__custom__') {
+                    setIsCustomUnit(true);
+                  } else {
+                    setUnit(e.target.value);
+                  }
+                }}
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8] focus:bg-white"
+              >
+                <option value="gram">gram (g)</option>
+                <option value="kg">kilogram (kg)</option>
+                <option value="ml">milliliter (ml)</option>
+                <option value="lít">lít (l)</option>
+                <option value="muỗng cà phê">muỗng cà phê (tsp)</option>
+                <option value="muỗng canh">muỗng canh (tbsp)</option>
+                <option value="quả">quả / trái</option>
+                <option value="củ">củ</option>
+                <option value="tép">tép</option>
+                <option value="ổ">ổ</option>
+                <option value="bát">bát / chén</option>
+                <option value="lát">lát</option>
+                <option value="miếng">miếng</option>
+                <option value="gói">gói</option>
+                <option value="hộp">hộp</option>
+                <option value="chai">chai</option>
+                <option value="lon">lon</option>
+                <option value="bó">bó</option>
+                <option value="nguyên con">nguyên con</option>
+                <option value="cái">cái</option>
+                {unit && !['gram', 'kg', 'ml', 'lít', 'muỗng cà phê', 'muỗng canh', 'quả', 'củ', 'tép', 'ổ', 'bát', 'lát', 'miếng', 'gói', 'hộp', 'chai', 'lon', 'bó', 'nguyên con', 'cái'].includes(unit) && (
+                  <option value={unit}>{unit}</option>
+                )}
+                <option value="__custom__">✍️ Tự nhập đơn vị khác...</option>
+              </select>
+            )}
           </div>
 
           <div>
@@ -254,30 +296,62 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
           </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">
-            Đơn giá vốn (VNĐ / {unit || 'đơn vị'})
-          </label>
+        {/* Price Section with Quick Converter */}
+        <div className="p-3.5 bg-emerald-50/50 rounded-2xl border border-emerald-100 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-extrabold text-emerald-900">
+              Đơn giá vốn (VNĐ / {unit || 'đơn vị'}) <span className="text-emerald-600 font-normal">(dùng tính giá vốn món)</span>
+            </label>
+            {pricePerUnit !== '' && Number(pricePerUnit) > 0 && (
+              <span className="text-[11px] font-black text-emerald-700 bg-white px-2 py-0.5 rounded-md border border-emerald-200 shadow-2xs">
+                {Number(pricePerUnit).toLocaleString('vi-VN')} đ / {unit}
+              </span>
+            )}
+          </div>
+
           <div className="relative">
             <input
               type="number"
               min="0"
               step="any"
-              placeholder="VD: 250 (nghĩa là 250đ / 1 gram)"
+              placeholder="VD: 260 (nghĩa là 260đ / 1 gram)"
               value={pricePerUnit}
               onChange={(e) => {
                 const val = e.target.value;
                 setPricePerUnit(val === '' ? '' : Number(val));
               }}
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-3.5 pr-12 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8] focus:bg-white"
+              className="w-full bg-white border border-emerald-200 rounded-2xl pl-3.5 pr-14 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
             />
-            <span className="absolute right-3.5 top-2.5 text-xs font-bold text-slate-400">
+            <span className="absolute right-3.5 top-2.5 text-xs font-black text-emerald-600">
               VNĐ
             </span>
           </div>
-          <p className="text-[10px] text-slate-400 mt-1">
-            Dùng để tính tự động tổng giá vốn (Cost) món ăn. Ví dụ: Thịt bò 260.000đ/kg = 260đ/gram.
-          </p>
+
+          {/* Quick Price Calculator Tip */}
+          <div className="p-2.5 bg-white rounded-xl border border-emerald-200/60 text-[11px] text-slate-600 space-y-1">
+            <p className="font-bold text-emerald-800 flex items-center gap-1">
+              💡 Mẹo tính nhanh đơn giá:
+            </p>
+            <p className="text-[10.5px] text-slate-500 leading-relaxed">
+              Nếu bạn mua <span className="font-bold text-slate-700">1kg (1.000g)</span> giá <span className="font-bold text-slate-700">260.000đ</span> &rarr; nhập đơn giá là <span className="font-bold text-emerald-600">260</span> (260.000 / 1.000).
+            </p>
+            <div className="flex gap-1.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setPricePerUnit(260)}
+                className="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-[10px] hover:bg-emerald-200 transition-colors"
+              >
+                Gợi ý 260.000đ/kg &rarr; 260đ/g
+              </button>
+              <button
+                type="button"
+                onClick={() => setPricePerUnit(140)}
+                className="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-[10px] hover:bg-emerald-200 transition-colors"
+              >
+                Gợi ý 140.000đ/kg &rarr; 140đ/g
+              </button>
+            </div>
+          </div>
         </div>
 
         <div>
