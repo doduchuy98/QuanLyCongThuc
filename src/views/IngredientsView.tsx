@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Filter, Plus, ChevronRight, Carrot, Trash2, Tag } from 'lucide-react';
+import { Search, Filter, Plus, ChevronRight, Carrot, Trash2, Tag, ImageOff } from 'lucide-react';
 import { IngredientItem, Category } from '../types';
 import { CuteDeleteModal } from '../components/CuteDeleteModal';
 import { matchesSearch } from '../utils/stringUtils';
@@ -209,15 +209,31 @@ export const IngredientsView: React.FC<IngredientsViewProps> = ({
                 className="flex items-center justify-between p-3 rounded-[20px] bg-white border border-slate-100 shadow-2xs hover:shadow-md transition-shadow cursor-pointer group"
               >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-12 h-12 rounded-2xl overflow-hidden bg-pink-50 border border-slate-100 flex-shrink-0 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/80 flex-shrink-0 flex items-center justify-center">
                   {ing.imageUrl ? (
                     <img
                       src={ing.imageUrl}
                       alt={ing.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const parent = e.currentTarget.parentElement;
+                        if (parent && !parent.querySelector('.no-img-badge')) {
+                          const div = document.createElement('div');
+                          div.className = 'no-img-badge flex flex-col items-center justify-center text-slate-400 p-0.5 text-center w-full h-full bg-slate-100';
+                          div.innerHTML = `
+                            <svg class="w-4 h-4 text-slate-400 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                            <span class="text-[7.5px] font-black tracking-tighter text-slate-400 uppercase leading-none">No image</span>
+                          `;
+                          parent.appendChild(div);
+                        }
+                      }}
                     />
                   ) : (
-                    <Carrot className="w-6 h-6 text-[#FF8FB8]" />
+                    <div className="flex flex-col items-center justify-center text-slate-400 p-1 text-center w-full h-full bg-slate-100">
+                      <ImageOff className="w-4 h-4 text-slate-400 mb-0.5" />
+                      <span className="text-[7.5px] font-black tracking-tighter text-slate-400 uppercase leading-none">No image</span>
+                    </div>
                   )}
                 </div>
                 <div className="min-w-0">

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Check, Carrot, Sparkles, Search, Layers, AlertTriangle, AlertCircle } from 'lucide-react';
+import { Upload, Check, Carrot, Sparkles, Search, Layers, AlertTriangle, AlertCircle, ImageOff, X, Image as ImageIcon } from 'lucide-react';
 import { IngredientItem, Category } from '../types';
 import { PRESET_INGREDIENTS_LIBRARY, PresetIngredient } from '../data/presetIngredients';
 import { matchesSearch, removeVietnameseTones } from '../utils/stringUtils';
@@ -33,11 +33,22 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
   const [category, setCategory] = useState(ingredientToEdit?.category || 'Thịt tươi');
   const [pricePerUnit, setPricePerUnit] = useState<number | ''>(ingredientToEdit?.pricePerUnit ?? '');
   const [note, setNote] = useState(ingredientToEdit?.note || '');
-  const [imageUrl, setImageUrl] = useState(
-    ingredientToEdit?.imageUrl || PRESET_INGREDIENT_IMAGES[0]
-  );
+  const [imageUrl, setImageUrl] = useState(ingredientToEdit?.imageUrl || '');
   const [isActive, setIsActive] = useState(ingredientToEdit?.isActive ?? true);
   const [isCustomUnit, setIsCustomUnit] = useState(false);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setImageUrl(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Preset library filter state
   const [libraryFilterCategory, setLibraryFilterCategory] = useState<string>('Tất cả');
@@ -240,34 +251,87 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
 
       {/* Upload Image Box */}
       <div>
-        <label className="block text-xs font-bold text-slate-700 mb-1.5">
-          Ảnh nguyên liệu
-        </label>
-        <div className="relative w-full h-36 rounded-3xl border-2 border-dashed border-pink-200 bg-pink-50/40 overflow-hidden flex flex-col items-center justify-center p-3 text-center cursor-pointer group hover:bg-pink-50 transition-colors">
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="block text-xs font-bold text-slate-700">
+            Ảnh nguyên liệu
+          </label>
           {imageUrl ? (
-            <img src={imageUrl} alt="Preview" className="w-20 h-20 object-cover rounded-2xl shadow-sm" />
+            <button
+              type="button"
+              onClick={() => setImageUrl('')}
+              className="text-xs font-bold text-rose-500 hover:underline flex items-center gap-1"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Xóa ảnh (Hiện No Image)</span>
+            </button>
           ) : (
-            <div className="flex flex-col items-center text-slate-400">
-              <Upload className="w-7 h-7 text-[#FF8FB8] mb-1 group-hover:scale-110 transition-transform" />
-              <span className="font-bold text-xs text-slate-700">Thêm ảnh nguyên liệu</span>
-            </div>
+            <span className="text-[11px] text-slate-400 font-medium">Đang ở chế độ: No Image</span>
           )}
         </div>
 
-        {/* Preset ingredient photo selector */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar mt-2">
-          {PRESET_INGREDIENT_IMAGES.map((img, idx) => (
-            <button
-              type="button"
-              key={idx}
-              onClick={() => setImageUrl(img)}
-              className={`w-11 h-11 rounded-xl flex-shrink-0 overflow-hidden border-2 transition-all ${
-                imageUrl === img ? 'border-[#FF8FB8] scale-105 shadow-sm' : 'border-transparent opacity-60'
-              }`}
-            >
-              <img src={img} alt="Preset" className="w-full h-full object-cover" />
-            </button>
-          ))}
+        <div className="relative w-full h-36 rounded-3xl border-2 border-dashed border-pink-200 bg-pink-50/40 overflow-hidden flex flex-col items-center justify-center p-3 text-center group hover:bg-pink-50 transition-colors">
+          {imageUrl ? (
+            <div className="relative w-full h-full flex items-center justify-center">
+              <img
+                src={imageUrl}
+                alt="Preview"
+                className="w-24 h-24 object-cover rounded-2xl shadow-sm border border-slate-200"
+                onError={() => setImageUrl('')}
+              />
+              <label className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer rounded-2xl">
+                <Upload className="w-6 h-6 mb-1" />
+                <span className="text-xs font-bold">Tải ảnh mới</span>
+                <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+              </label>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center text-slate-400 cursor-pointer w-full h-full p-2">
+              <div className="w-10 h-10 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 mb-1.5 group-hover:scale-110 transition-transform">
+                <ImageOff className="w-5 h-5 text-slate-400" />
+              </div>
+              <span className="font-extrabold text-xs text-slate-700">Chưa có ảnh (No Image)</span>
+              <span className="text-[11px] text-pink-600 font-bold mt-0.5 underline">Chạm vào đây để tải ảnh từ máy tính/điện thoại 📷</span>
+              <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+            </label>
+          )}
+        </div>
+
+        {/* URL Input & Quick Presets */}
+        <div className="mt-2.5 space-y-2">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Hoặc dán URL ảnh nguyên liệu từ internet..."
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8]"
+            />
+            {imageUrl && (
+              <button
+                type="button"
+                onClick={() => setImageUrl('')}
+                className="absolute right-2.5 top-2 text-xs font-extrabold text-slate-400 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5">
+            <span className="text-[10.5px] font-bold text-slate-400 flex-shrink-0">Ảnh mẫu:</span>
+            {PRESET_INGREDIENT_IMAGES.map((img, idx) => (
+              <button
+                type="button"
+                key={idx}
+                onClick={() => setImageUrl(img)}
+                className={`w-9 h-9 rounded-xl flex-shrink-0 overflow-hidden border-2 transition-all ${
+                  imageUrl === img ? 'border-[#FF8FB8] scale-105 shadow-xs' : 'border-transparent opacity-60 hover:opacity-100'
+                }`}
+              >
+                <img src={img} alt="Preset" className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

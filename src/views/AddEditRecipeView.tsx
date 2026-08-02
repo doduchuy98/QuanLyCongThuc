@@ -672,11 +672,12 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
                         <img
                           src={item.imageUrl}
                           alt={item.name}
-                          className="w-10 h-10 rounded-xl object-cover border border-slate-100"
+                          className="w-10 h-10 rounded-xl object-cover border border-slate-100 flex-shrink-0"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-xs">
-                          {item.name[0]}
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200/80 flex flex-col items-center justify-center text-slate-400 text-center flex-shrink-0 p-0.5">
+                          <ImageOff className="w-3.5 h-3.5 text-slate-400" />
+                          <span className="text-[7.5px] font-black tracking-tighter text-slate-400 uppercase leading-none mt-0.5">No image</span>
                         </div>
                       )}
                       <div>
