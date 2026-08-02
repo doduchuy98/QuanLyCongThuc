@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle2, Clock, ChefHat, Sparkles, Share2, Users, RotateCcw, Pencil, ImageOff, Coins, Calculator, TrendingUp, Info } from 'lucide-react';
+import { Plus, CheckCircle2, Clock, ChefHat, Sparkles, Share2, Users, RotateCcw, Pencil, ImageOff, Coins, Calculator, TrendingUp, Info, Calendar, ShoppingCart } from 'lucide-react';
 import { Recipe, CookingStep, IngredientItem } from '../types';
 import { shareRecipeData } from '../utils/shareUtils';
 import { calculateIngredientCost, calculateRecipeTotalCost, getIngredientCostDetails, formatCurrency } from '../utils/costUtils';
@@ -12,6 +12,7 @@ interface RecipeDetailViewProps {
   onEditRecipe: (recipeId: string) => void;
   onUpdateRecipe: (updatedRecipe: Recipe) => void;
   onBack: () => void;
+  onAddRecipeToShoppingList?: (recipe: Recipe, servings: number) => void;
 }
 
 export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
@@ -22,6 +23,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   onEditRecipe,
   onUpdateRecipe,
   onBack,
+  onAddRecipeToShoppingList,
 }) => {
   const [activeTab, setActiveTab] = useState<'thanh_phan' | 'gia_von' | 'dinh_luong' | 'quy_trinh' | 'thong_tin'>('thanh_phan');
 
@@ -156,6 +158,21 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
 
         {/* Header Action Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          {onAddRecipeToShoppingList && (
+            <button
+              onClick={() => {
+                onAddRecipeToShoppingList(recipe, servings);
+                setShareFeedbackMsg(`Đã thêm ${recipe.ingredients.length} nguyên liệu (${servings} khẩu phần) vào Danh sách đi chợ! 🛒`);
+                setTimeout(() => setShareFeedbackMsg(null), 3500);
+              }}
+              className="px-3 py-2 rounded-2xl bg-gradient-to-r from-[#FF8FB8] to-[#FF6B9D] text-white font-extrabold text-xs shadow-md shadow-pink-200 hover:opacity-95 transition-all flex items-center gap-1.5"
+              title="Thêm nguyên liệu món này vào danh sách đi chợ"
+            >
+              <ShoppingCart className="w-4 h-4 stroke-[2.5]" />
+              <span className="hidden sm:inline">Thêm vào đi chợ</span>
+            </button>
+          )}
+
           <button
             onClick={() => {
               if (isAdmin) {
@@ -702,6 +719,16 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                 </div>
               </div>
             </div>
+
+            {recipe.updatedAt && (
+              <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-sky-500" />
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-bold">Thời gian cập nhật</span>
+                  <span className="text-xs font-bold text-slate-700">{recipe.updatedAt}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

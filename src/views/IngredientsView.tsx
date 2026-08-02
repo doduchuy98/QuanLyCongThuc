@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
-import { Search, Filter, Plus, ChevronRight, Carrot, Trash2 } from 'lucide-react';
-import { IngredientItem } from '../types';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, Filter, Plus, ChevronRight, Carrot, Trash2, Tag } from 'lucide-react';
+import { IngredientItem, Category } from '../types';
 import { CuteDeleteModal } from '../components/CuteDeleteModal';
 
 interface IngredientsViewProps {
   ingredients: IngredientItem[];
+  categories?: Category[];
+  selectedCategory?: string;
+  onSelectCategory?: (cat: string) => void;
   isAdmin?: boolean;
   onOpenAdminLogin?: () => void;
   onAddIngredient: () => void;
@@ -14,6 +18,9 @@ interface IngredientsViewProps {
 
 export const IngredientsView: React.FC<IngredientsViewProps> = ({
   ingredients,
+  categories = [],
+  selectedCategory: externalCategory,
+  onSelectCategory,
   isAdmin,
   onOpenAdminLogin,
   onAddIngredient,
@@ -22,7 +29,31 @@ export const IngredientsView: React.FC<IngredientsViewProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUnitFilter, setSelectedUnitFilter] = useState('Tất cả');
+  const [internalCategory, setInternalCategory] = useState('Tất cả');
   const [ingToDelete, setIngToDelete] = useState<IngredientItem | null>(null);
+
+  const selectedCategory = externalCategory !== undefined ? externalCategory : internalCategory;
+
+  const handleSetCategory = (catName: string) => {
+    setInternalCategory(catName);
+    if (onSelectCategory) {
+      onSelectCategory(catName);
+    }
+  };
+
+  // Only filter categories intended for Ingredients
+  const ingredientCatNamesFromObj = categories
+    .filter((c) => c.type === 'ingredient')
+    .map((c) => c.name);
+
+  const ingredientCatNamesFromIngs = ingredients
+    .map((i) => i.category)
+    .filter((c): c is string => !!c);
+
+  const filterCategories = [
+    'Tất cả',
+    ...Array.from(new Set([...ingredientCatNamesFromObj, ...ingredientCatNamesFromIngs])),
+  ];
 
   const filtered = ingredients.filter((ing) => {
     const matchesSearch = ing.name
@@ -30,7 +61,9 @@ export const IngredientsView: React.FC<IngredientsViewProps> = ({
       .includes(searchQuery.toLowerCase());
     const matchesUnit =
       selectedUnitFilter === 'Tất cả' || ing.unit === selectedUnitFilter;
-    return matchesSearch && matchesUnit;
+    const matchesCategory =
+      selectedCategory === 'Tất cả' || ing.category === selectedCategory;
+    return matchesSearch && matchesUnit && matchesCategory;
   });
 
   const ingredientsWithPriceCount = ingredients.filter(i => i.pricePerUnit !== undefined && i.pricePerUnit > 0).length;
@@ -102,32 +135,78 @@ export const IngredientsView: React.FC<IngredientsViewProps> = ({
         </button>
       </div>
 
+      {/* Category Filter Chips for Ingredients */}
+      {filterCategories.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 pt-0.5">
+          {filterCategories.map((cat) => {
+            const isSelected = selectedCategory === cat;
+            return (
+              <button
+                key={cat}
+                onClick={() => handleSetCategory(cat)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 shadow-2xs ${
+                  isSelected
+                    ? 'bg-[#FF8FB8] text-white shadow-pink-200 shadow-sm scale-102'
+                    : 'bg-white border border-slate-200/80 text-slate-600 hover:bg-pink-50'
+                }`}
+              >
+                {cat}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Active Filter Status */}
+      <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+        <span className="font-semibold text-slate-600">
+          Hiển thị {filtered.length} nguyên liệu
+        </span>
+        {selectedCategory !== 'Tất cả' && (
+          <span className="font-bold text-[#FF8FB8] bg-pink-50 px-2 py-0.5 rounded-full text-[11px] flex items-center gap-1">
+            <Tag className="w-3 h-3" /> {selectedCategory}
+          </span>
+        )}
+      </div>
+
       {/* Ingredients List */}
-      <div className="space-y-2.5">
-        {filtered.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-slate-200 p-6">
-            <Carrot className="w-12 h-12 text-slate-300 mx-auto mb-2" />
-            <p className="text-sm font-bold text-slate-600">
-              Không tìm thấy nguyên liệu phù hợp
-            </p>
-            <p className="text-xs text-slate-400 mt-1">
-              Thử tìm từ khóa khác nhé!
-            </p>
-          </div>
-        ) : (
-          filtered.map((ing) => (
-            <div
-              key={ing.id}
-              onClick={() => {
-                if (isAdmin) {
-                  onSelectIngredient(ing);
-                } else if (onOpenAdminLogin) {
-                  onOpenAdminLogin();
-                }
-              }}
-              className="flex items-center justify-between p-3 rounded-[20px] bg-white border border-slate-100 shadow-2xs hover:shadow-md transition-all cursor-pointer group"
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <AnimatePresence mode="popLayout">
+          {filtered.length === 0 ? (
+            <motion.div
+              key="empty-ingredient-state"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="text-center py-12 bg-white rounded-3xl border border-dashed border-slate-200 p-6 col-span-full"
             >
-              <div className="flex items-center gap-3">
+              <Carrot className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm font-bold text-slate-600">
+                Không tìm thấy nguyên liệu phù hợp
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                Thử tìm từ khóa hoặc chọn danh mục khác nhé!
+              </p>
+            </motion.div>
+          ) : (
+            filtered.map((ing) => (
+              <motion.div
+                key={ing.id}
+                layout
+                initial={{ opacity: 0, scale: 0.95, y: 8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.85, y: -12, filter: 'blur(4px)' }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
+                onClick={() => {
+                  if (isAdmin) {
+                    onSelectIngredient(ing);
+                  } else if (onOpenAdminLogin) {
+                    onOpenAdminLogin();
+                  }
+                }}
+                className="flex items-center justify-between p-3 rounded-[20px] bg-white border border-slate-100 shadow-2xs hover:shadow-md transition-shadow cursor-pointer group"
+              >
+              <div className="flex items-center gap-3 min-w-0">
                 <div className="w-12 h-12 rounded-2xl overflow-hidden bg-pink-50 border border-slate-100 flex-shrink-0 flex items-center justify-center">
                   {ing.imageUrl ? (
                     <img
@@ -139,10 +218,17 @@ export const IngredientsView: React.FC<IngredientsViewProps> = ({
                     <Carrot className="w-6 h-6 text-[#FF8FB8]" />
                   )}
                 </div>
-                <div>
-                  <h3 className="font-bold text-slate-800 text-sm group-hover:text-[#FF8FB8] transition-colors">
-                    {ing.name}
-                  </h3>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h3 className="font-bold text-slate-800 text-sm group-hover:text-[#FF8FB8] transition-colors truncate">
+                      {ing.name}
+                    </h3>
+                    {ing.category && (
+                      <span className="px-1.5 py-0.2 rounded-md bg-pink-50 text-pink-600 border border-pink-100 font-semibold text-[10px] flex-shrink-0">
+                        {ing.category}
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-2 flex-wrap">
                     <span>Đơn vị: <span className="font-semibold text-slate-600">{ing.unit}</span></span>
                     {ing.pricePerUnit !== undefined && ing.pricePerUnit > 0 ? (
@@ -175,9 +261,10 @@ export const IngredientsView: React.FC<IngredientsViewProps> = ({
                 </button>
                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#FF8FB8] group-hover:translate-x-0.5 transition-all" />
               </div>
-            </div>
+            </motion.div>
           ))
         )}
+        </AnimatePresence>
       </div>
 
       <CuteDeleteModal

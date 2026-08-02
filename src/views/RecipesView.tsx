@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Search, MoreVertical, Plus, ChefHat, ArrowUpDown, Star, Calendar, Check, Share2, CheckCircle2, ImageOff, Coins } from 'lucide-react';
 import { Category, IngredientItem, Recipe } from '../types';
 import { shareRecipeData } from '../utils/shareUtils';
@@ -77,14 +78,27 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
     setTimeout(() => setShareToast(null), 3000);
   };
 
-  const filterCategories = ['Tất cả', ...categories.map((c) => c.name)];
+  // Filter categories to only include recipe categories
+  const recipeCatNamesFromObj = categories
+    .filter((c) => c.type === 'recipe' || (!c.type && c.type !== 'ingredient' && c.type !== 'unit'))
+    .map((c) => c.name);
+
+  const recipeCatNamesFromRecipes = recipes.map((r) => r.category).filter(Boolean);
+
+  const filterCategories = [
+    'Tất cả',
+    ...Array.from(new Set([...recipeCatNamesFromObj, ...recipeCatNamesFromRecipes])),
+  ];
 
   const parseDate = (dateStr?: string) => {
     if (!dateStr) return 0;
-    const parts = dateStr.split('/');
-    if (parts.length === 3) {
-      const [day, month, year] = parts;
-      return new Date(`${year}-${month}-${day}`).getTime() || 0;
+    const parts = dateStr.trim().split(' ');
+    const datePart = parts[0];
+    const timePart = parts[1] ? `T${parts[1]}` : '';
+    const dParts = datePart.split('/');
+    if (dParts.length === 3) {
+      const [day, month, year] = dParts;
+      return new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}${timePart}`).getTime() || 0;
     }
     return new Date(dateStr).getTime() || 0;
   };
@@ -93,9 +107,14 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
     .filter((r) => {
       const matchesCategory =
         selectedCategory === 'Tất cả' || r.category === selectedCategory;
+      const q = searchQuery.trim().toLowerCase();
       const matchesSearch =
-        r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.description.toLowerCase().includes(searchQuery.toLowerCase());
+        !q ||
+        r.title.toLowerCase().includes(q) ||
+        r.description.toLowerCase().includes(q) ||
+        r.category.toLowerCase().includes(q) ||
+        (r.ingredients &&
+          r.ingredients.some((ing) => ing.ingredientName.toLowerCase().includes(q)));
       return matchesCategory && matchesSearch;
     })
     .sort((a, b) => {
@@ -137,7 +156,7 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
         <div className="relative flex-1">
           <input
             type="text"
-            placeholder="Tìm kiếm công thức món ăn..."
+            placeholder="Tìm theo tên món hoặc nguyên liệu..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-slate-50 border border-slate-200/80 rounded-2xl pl-10 pr-8 py-2.5 text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8] focus:bg-white transition-all shadow-2xs"
@@ -147,6 +166,7 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
             <button
               onClick={() => setSearchQuery('')}
               className="absolute right-3 top-2.5 text-xs font-bold text-slate-400 hover:text-slate-600 bg-slate-200/60 rounded-full w-5 h-5 flex items-center justify-center"
+              title="Xóa tìm kiếm"
             >
               ✕
             </button>
@@ -239,24 +259,36 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
       </div>
 
       {/* Recipes List */}
-      <div className="space-y-3">
-        {filteredRecipes.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-slate-200 p-6">
-            <ChefHat className="w-12 h-12 text-slate-300 mx-auto mb-2" />
-            <p className="text-sm font-bold text-slate-600">
-              Không tìm thấy công thức phù hợp
-            </p>
-            <p className="text-xs text-slate-400 mt-1">
-              Thử tìm từ khóa khác nhé!
-            </p>
-          </div>
-        ) : (
-          filteredRecipes.map((recipe) => (
-            <div
-              key={recipe.id}
-              onClick={() => onSelectRecipe(recipe.id)}
-              className="relative flex items-center justify-between p-3 rounded-[22px] bg-white border border-slate-100 shadow-2xs hover:shadow-md transition-all cursor-pointer group"
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        <AnimatePresence mode="popLayout">
+          {filteredRecipes.length === 0 ? (
+            <motion.div
+              key="empty-recipe-state"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="text-center py-12 bg-white rounded-3xl border border-dashed border-slate-200 p-6 col-span-full"
             >
+              <ChefHat className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm font-bold text-slate-600">
+                Không tìm thấy công thức phù hợp
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                Thử tìm từ khóa khác nhé!
+              </p>
+            </motion.div>
+          ) : (
+            filteredRecipes.map((recipe) => (
+              <motion.div
+                key={recipe.id}
+                layout
+                initial={{ opacity: 0, scale: 0.95, y: 8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.85, y: -12, filter: 'blur(4px)' }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
+                onClick={() => onSelectRecipe(recipe.id)}
+                className="relative flex items-center justify-between p-3 rounded-[22px] bg-white border border-slate-100 shadow-2xs hover:shadow-md transition-shadow cursor-pointer group"
+              >
               <div className="flex items-center gap-3.5 min-w-0">
                 <div className="relative flex-shrink-0">
                   {recipe.imageUrl ? (
@@ -308,9 +340,36 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
                   {recipe.updatedAt && (
                     <div className="flex items-center gap-1 text-[10px] font-medium text-slate-400 mt-1">
                       <Calendar className="w-3 h-3 text-slate-300" />
-                      <span>Thêm ngày {recipe.updatedAt}</span>
+                      <span>Cập nhật: {recipe.updatedAt}</span>
                     </div>
                   )}
+                  {searchQuery.trim() && (() => {
+                    const q = searchQuery.trim().toLowerCase();
+                    const matchedIngs = recipe.ingredients.filter((ing) =>
+                      ing.ingredientName.toLowerCase().includes(q)
+                    );
+                    if (matchedIngs.length > 0) {
+                      return (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {matchedIngs.slice(0, 3).map((ing, i) => (
+                            <span
+                              key={i}
+                              className="px-1.5 py-0.5 rounded-md bg-pink-50 border border-pink-200/60 text-[10px] font-bold text-[#FF8FB8] inline-flex items-center gap-0.5"
+                            >
+                              <span>🥕</span>
+                              <span>{ing.ingredientName}</span>
+                            </span>
+                          ))}
+                          {matchedIngs.length > 3 && (
+                            <span className="text-[10px] text-slate-400 font-bold self-center">
+                              +{matchedIngs.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
 
@@ -372,9 +431,10 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
                   </div>
                 )}
               </div>
-            </div>
+            </motion.div>
           ))
         )}
+        </AnimatePresence>
       </div>
 
       <CuteDeleteModal

@@ -31,7 +31,7 @@ interface CategoriesViewProps {
   ingredients: IngredientItem[];
   isAdmin?: boolean;
   onOpenAdminLogin?: () => void;
-  onSelectCategoryFilter: (categoryName: string) => void;
+  onSelectCategoryFilter: (categoryName: string, categoryType?: 'recipe' | 'ingredient') => void;
   onAddCategory: (newCat: Category) => void;
   onDeleteCategory: (categoryId: string) => void;
 }
@@ -224,7 +224,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
       </div>
 
       {/* Categories / Units List */}
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
         {activeTab === 'unit' ? (
           sortedUnitNames.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-slate-200 p-6">
@@ -375,7 +375,9 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
                 key={cat.id}
                 onClick={() => {
                   if (activeTab === 'recipe') {
-                    onSelectCategoryFilter(cat.name);
+                    onSelectCategoryFilter(cat.name, 'recipe');
+                  } else if (activeTab === 'ingredient') {
+                    onSelectCategoryFilter(cat.name, 'ingredient');
                   }
                 }}
                 className="flex items-center justify-between p-3.5 rounded-[22px] bg-white border border-slate-100 shadow-2xs hover:shadow-md transition-all cursor-pointer group"
@@ -411,7 +413,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
                     <Trash2 className="w-4 h-4" />
                   </button>
 
-                  {activeTab === 'recipe' && (
+                  {(activeTab === 'recipe' || activeTab === 'ingredient') && (
                     <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-[#FF8FB8] group-hover:translate-x-1 transition-all" />
                   )}
                 </div>

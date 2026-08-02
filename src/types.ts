@@ -57,4 +57,18 @@ export interface UnitConversionRule {
   note?: string;
 }
 
-export type ActiveTab = 'home' | 'recipes' | 'ingredients' | 'categories' | 'settings';
+export interface ShoppingListItem {
+  id: string;
+  ingredientId?: string;
+  name: string;
+  amount: number;
+  unit: string;
+  category?: string;
+  pricePerUnit?: number;
+  isBought: boolean;
+  recipeSource?: string;
+  note?: string;
+  createdAt: string;
+}
+
+export type ActiveTab = 'home' | 'recipes' | 'ingredients' | 'categories' | 'shopping_list' | 'settings';

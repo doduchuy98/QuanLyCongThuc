@@ -94,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
               <Menu className="w-5 h-5 text-slate-700" />
             </button>
           )}
-          <h1 className="text-lg font-bold text-slate-800 tracking-tight truncate max-w-[180px]">
+          <h1 className="text-lg font-bold text-slate-800 tracking-tight truncate max-w-[180px] sm:max-w-xs md:max-w-none">
             {title}
           </h1>
         </div>

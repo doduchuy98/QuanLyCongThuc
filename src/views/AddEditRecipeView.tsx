@@ -189,9 +189,12 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
     }
 
     const now = new Date();
-    const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(
-      now.getMonth() + 1
-    ).padStart(2, '0')}/${now.getFullYear()}`;
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const formattedDate = `${day}/${month}/${year} ${hours}:${minutes}`;
 
     const newRecipe: Recipe = {
       id: recipeToEdit?.id || `rec-${Date.now()}`,
@@ -200,7 +203,7 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
       imageUrl,
       description,
       isActive,
-      updatedAt: recipeToEdit?.updatedAt || formattedDate,
+      updatedAt: formattedDate,
       portionLabel,
       ingredients,
       steps,

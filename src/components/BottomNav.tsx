@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, ChefHat, Carrot, LayoutGrid, Plus } from 'lucide-react';
+import { Home, ChefHat, Carrot, ShoppingCart, Plus } from 'lucide-react';
 import { ActiveTab } from '../types';
 
 interface BottomNavProps {
@@ -8,6 +8,7 @@ interface BottomNavProps {
   onQuickAddClick?: () => void;
   isAdmin?: boolean;
   onOpenAdminLogin?: () => void;
+  shoppingListUnboughtCount?: number;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
@@ -16,6 +17,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   onQuickAddClick,
   isAdmin,
   onOpenAdminLogin,
+  shoppingListUnboughtCount = 0,
 }) => {
   const leftTabs = [
     { id: 'home' as ActiveTab, label: 'Trang chủ', icon: Home },
@@ -23,8 +25,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   ];
 
   const rightTabs = [
+    { id: 'shopping_list' as ActiveTab, label: 'Đi chợ', icon: ShoppingCart, badge: shoppingListUnboughtCount },
     { id: 'ingredients' as ActiveTab, label: 'Nguyên liệu', icon: Carrot },
-    { id: 'categories' as ActiveTab, label: 'Danh mục', icon: LayoutGrid },
   ];
 
   return (
@@ -84,21 +86,29 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         {rightTabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
+          const hasBadge = (tab.badge ?? 0) > 0;
           return (
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`flex flex-col items-center justify-center w-14 h-12 rounded-2xl transition-all duration-200 ${
+              className={`relative flex flex-col items-center justify-center w-14 h-12 rounded-2xl transition-all duration-200 ${
                 isActive
                   ? 'text-[#FF8FB8] font-bold scale-105'
                   : 'text-slate-400 hover:text-slate-600 font-medium'
               }`}
             >
-              <Icon
-                className={`w-5 h-5 transition-transform duration-200 ${
-                  isActive ? 'scale-110 stroke-[2.5]' : 'stroke-[1.75]'
-                }`}
-              />
+              <div className="relative">
+                <Icon
+                  className={`w-5 h-5 transition-transform duration-200 ${
+                    isActive ? 'scale-110 stroke-[2.5]' : 'stroke-[1.75]'
+                  }`}
+                />
+                {hasBadge && (
+                  <span className="absolute -top-1.5 -right-2 bg-pink-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full min-w-[16px] text-center border-2 border-white">
+                    {tab.badge}
+                  </span>
+                )}
+              </div>
               <span className="text-[10px] mt-0.5 tracking-tight leading-none">
                 {tab.label}
               </span>

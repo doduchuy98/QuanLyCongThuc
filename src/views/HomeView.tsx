@@ -1,14 +1,16 @@
 import React from 'react';
-import { Utensils, Carrot, LayoutGrid, RefreshCw, ChevronRight, MoreVertical, ImageOff } from 'lucide-react';
+import { Utensils, Carrot, LayoutGrid, RefreshCw, ChevronRight, ShoppingCart, BookOpen, Sparkles, ImageOff, MoreVertical } from 'lucide-react';
 import { Category, Recipe } from '../types';
 
 interface HomeViewProps {
   recipes: Recipe[];
   categories: Category[];
   totalIngredientsCount: number;
+  shoppingListUnboughtCount?: number;
   onNavigateToRecipes: () => void;
   onNavigateToIngredients: () => void;
   onNavigateToCategories: () => void;
+  onNavigateToShoppingList?: () => void;
   onSelectRecipe: (recipeId: string) => void;
 }
 
@@ -16,9 +18,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
   recipes,
   categories,
   totalIngredientsCount,
+  shoppingListUnboughtCount = 0,
   onNavigateToRecipes,
   onNavigateToIngredients,
   onNavigateToCategories,
+  onNavigateToShoppingList,
   onSelectRecipe,
 }) => {
   const totalRecipes = recipes.length;
@@ -28,21 +32,21 @@ export const HomeView: React.FC<HomeViewProps> = ({
   return (
     <div className="p-4 space-y-4 pb-24">
       {/* Top Banner */}
-      <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-r from-[#FFD9E8] via-[#FFF8FB] to-[#AEE9FF]/60 p-5 shadow-sm border border-pink-200/50">
-        <div className="relative z-10 max-w-[220px]">
+      <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-r from-[#FFD9E8] via-[#FFF8FB] to-[#AEE9FF]/60 p-5 md:p-6 shadow-sm border border-pink-200/50">
+        <div className="relative z-10 max-w-[220px] md:max-w-lg">
           <span className="inline-block px-2.5 py-1 rounded-full bg-white/80 text-[11px] font-bold text-[#FF8FB8] mb-1.5 shadow-2xs">
             Trợ lý làm bếp 🌟
           </span>
-          <h2 className="text-lg font-black text-slate-800 leading-tight">
-            Quản lý công thức
+          <h2 className="text-lg md:text-xl font-black text-slate-800 leading-tight">
+            Quản lý công thức món ăn & sốt
           </h2>
-          <p className="text-xs font-semibold text-slate-600 mt-1">
-            Hiệu quả – Chính xác – Dễ dàng
+          <p className="text-xs md:text-sm font-semibold text-slate-600 mt-1">
+            Hiệu quả – Chính xác – Chuẩn định lượng & giá vốn
           </p>
         </div>
 
         {/* Decorative Dish Illustration Image */}
-        <div className="absolute right-2 -bottom-2 w-28 h-28 pointer-events-none">
+        <div className="absolute right-2 -bottom-2 w-28 h-28 md:w-36 md:h-36 pointer-events-none">
           <img
             src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&auto=format&fit=crop&q=80"
             alt="Dish Illustration"
@@ -51,8 +55,40 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </div>
 
-      {/* 4 Stats Cards Grid (2x2) */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Smart Shopping List Featured Card Banner */}
+      {onNavigateToShoppingList && (
+        <button
+          onClick={onNavigateToShoppingList}
+          className="w-full p-4 rounded-[24px] bg-gradient-to-r from-pink-500 via-rose-500 to-[#FF8FB8] text-white shadow-md shadow-pink-200 flex items-center justify-between text-left hover:opacity-95 transition-all group"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white flex-shrink-0 border border-white/30">
+              <ShoppingCart className="w-6 h-6 stroke-[2.2]" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-base tracking-tight">Đi Chợ Thông Minh 🛒</h3>
+                <span className="px-2 py-0.5 rounded-full bg-white text-pink-600 text-[10px] font-extrabold shadow-2xs">
+                  Mới
+                </span>
+              </div>
+              <p className="text-xs text-pink-100 font-semibold mt-0.5">
+                {shoppingListUnboughtCount > 0
+                  ? `Đang có ${shoppingListUnboughtCount} món nguyên liệu cần mua sắm`
+                  : 'Gom nguyên liệu từ món ăn & lên danh sách đi chợ'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 font-extrabold text-xs bg-white/20 px-3 py-2 rounded-xl backdrop-blur-md group-hover:bg-white/30 transition-all flex-shrink-0">
+            <span>Mở danh sách</span>
+            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          </div>
+        </button>
+      )}
+
+      {/* 4 Stats Cards Grid (2x2 on Mobile, 4x1 on Desktop) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {/* Card 1: Tổng công thức */}
         <button
           onClick={onNavigateToRecipes}
@@ -155,7 +191,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
 
         {/* Recipe Cards List */}
-        <div className="space-y-2.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {recipes.slice(0, 4).map((recipe) => (
             <div
               key={recipe.id}

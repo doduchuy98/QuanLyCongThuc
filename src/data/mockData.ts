@@ -1,4 +1,67 @@
-import { Category, IngredientItem, Recipe, UnitConversionRule } from '../types';
+import { Category, IngredientItem, Recipe, ShoppingListItem, UnitConversionRule } from '../types';
+
+export const INITIAL_SHOPPING_LIST: ShoppingListItem[] = [
+  {
+    id: 'shop-1',
+    ingredientId: 'ing-1',
+    name: 'Thịt đùi heo',
+    amount: 500,
+    unit: 'gram',
+    category: 'Thịt tươi',
+    pricePerUnit: 140,
+    isBought: false,
+    recipeSource: 'Thịt Kho Tàu (4 phần)',
+    createdAt: new Date().toLocaleDateString('vi-VN'),
+  },
+  {
+    id: 'shop-2',
+    ingredientId: 'ing-3',
+    name: 'Trứng gà tươi',
+    amount: 6,
+    unit: 'quả',
+    category: 'Thực phẩm khô / trứng',
+    pricePerUnit: 3500,
+    isBought: false,
+    recipeSource: 'Thịt Kho Tàu (4 phần)',
+    createdAt: new Date().toLocaleDateString('vi-VN'),
+  },
+  {
+    id: 'shop-3',
+    ingredientId: 'ing-7',
+    name: 'Sả cây tươi',
+    amount: 5,
+    unit: 'cây',
+    category: 'Rau củ & Rau thơm',
+    pricePerUnit: 2000,
+    isBought: true,
+    recipeSource: 'Lẩu Thái Hải Sản',
+    createdAt: new Date().toLocaleDateString('vi-VN'),
+  },
+  {
+    id: 'shop-4',
+    ingredientId: 'ing-5',
+    name: 'Cà chua chín',
+    amount: 3,
+    unit: 'quả',
+    category: 'Rau củ & Rau thơm',
+    pricePerUnit: 4000,
+    isBought: false,
+    recipeSource: 'Sốt Cà Chua Kim Môn',
+    createdAt: new Date().toLocaleDateString('vi-VN'),
+  },
+  {
+    id: 'shop-5',
+    ingredientId: 'ing-10',
+    name: 'Nước cốt dừa',
+    amount: 250,
+    unit: 'ml',
+    category: 'Gia vị & Nước sốt',
+    pricePerUnit: 80,
+    isBought: true,
+    recipeSource: 'Chè Bắp Nếp',
+    createdAt: new Date().toLocaleDateString('vi-VN'),
+  },
+];
 
 export const INITIAL_CATEGORIES: Category[] = [
   {
