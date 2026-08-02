@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Filter, Plus, ChevronRight, Carrot, Trash2, Tag } from 'lucide-react';
 import { IngredientItem, Category } from '../types';
 import { CuteDeleteModal } from '../components/CuteDeleteModal';
+import { matchesSearch } from '../utils/stringUtils';
 
 interface IngredientsViewProps {
   ingredients: IngredientItem[];
@@ -56,14 +57,15 @@ export const IngredientsView: React.FC<IngredientsViewProps> = ({
   ];
 
   const filtered = ingredients.filter((ing) => {
-    const matchesSearch = ing.name
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
+    const matchesQuery =
+      matchesSearch(ing.name, searchQuery) ||
+      matchesSearch(ing.category, searchQuery) ||
+      matchesSearch(ing.note, searchQuery);
     const matchesUnit =
       selectedUnitFilter === 'Tất cả' || ing.unit === selectedUnitFilter;
     const matchesCategory =
       selectedCategory === 'Tất cả' || ing.category === selectedCategory;
-    return matchesSearch && matchesUnit && matchesCategory;
+    return matchesQuery && matchesUnit && matchesCategory;
   });
 
   const ingredientsWithPriceCount = ingredients.filter(i => i.pricePerUnit !== undefined && i.pricePerUnit > 0).length;

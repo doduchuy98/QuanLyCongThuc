@@ -290,9 +290,16 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                   key={idx}
                   className="grid grid-cols-12 px-3 py-3 text-xs font-semibold text-slate-700 items-center hover:bg-pink-50/30 transition-colors"
                 >
-                  <span className="col-span-6 font-bold text-slate-800">
-                    {ing.ingredientName}
-                  </span>
+                  <div className="col-span-6 flex flex-col justify-center min-w-0 pr-1">
+                    <span className="font-bold text-slate-800 truncate">
+                      {ing.ingredientName}
+                    </span>
+                    {ing.note && (
+                      <span className="text-[11px] text-pink-600 font-semibold truncate italic">
+                        ({ing.note})
+                      </span>
+                    )}
+                  </div>
                   <span className="col-span-3 text-center text-slate-800 font-bold">
                     {Math.round(ing.amount * portionMultiplier * 10) / 10}
                   </span>
@@ -455,6 +462,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                       <div className="col-span-4 min-w-0 pr-1">
                         <span className="font-bold text-slate-800 block truncate" title={ing.ingredientName}>
                           {ing.ingredientName}
+                          {ing.note && <span className="text-[10.5px] text-pink-600 font-semibold italic ml-1">({ing.note})</span>}
                         </span>
                         <div className="flex items-center gap-1 flex-wrap">
                           <span className="text-[10px] text-slate-400 font-normal">{ing.unit}</span>
@@ -598,9 +606,16 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                     key={idx}
                     className="grid grid-cols-12 px-3 py-2 text-xs font-semibold text-slate-700 items-center hover:bg-pink-50/30 transition-colors"
                   >
-                    <span className="col-span-6 font-bold text-slate-800 truncate pr-1">
-                      {ing.ingredientName}
-                    </span>
+                    <div className="col-span-6 flex flex-col justify-center min-w-0 pr-1">
+                      <span className="font-bold text-slate-800 truncate">
+                        {ing.ingredientName}
+                      </span>
+                      {ing.note && (
+                        <span className="text-[10.5px] text-pink-600 font-semibold truncate italic">
+                          ({ing.note})
+                        </span>
+                      )}
+                    </div>
 
                     <div className="col-span-3 px-1">
                       <input

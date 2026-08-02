@@ -15,6 +15,7 @@ export interface RecipeIngredient {
   amount: number;
   unit: string;
   pricePerUnit?: number; // Optional override price in VNĐ per unit
+  note?: string; // e.g. "bằm nhỏ", "thái mỏng", "bỏ hạt"
 }
 
 export interface CookingStep {

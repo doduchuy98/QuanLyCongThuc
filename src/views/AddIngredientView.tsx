@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Upload, Check, Carrot, Sparkles, Search, Layers } from 'lucide-react';
+import { Upload, Check, Carrot, Sparkles, Search, Layers, AlertTriangle, AlertCircle } from 'lucide-react';
 import { IngredientItem, Category } from '../types';
 import { PRESET_INGREDIENTS_LIBRARY, PresetIngredient } from '../data/presetIngredients';
+import { matchesSearch, removeVietnameseTones } from '../utils/stringUtils';
 
 interface AddIngredientViewProps {
   ingredientToEdit?: IngredientItem | null;
   ingredientCategories?: Category[];
+  existingIngredients?: IngredientItem[];
   onSave: (ingredient: IngredientItem) => void;
   onCancel: () => void;
 }
@@ -22,6 +24,7 @@ const PRESET_INGREDIENT_IMAGES = [
 export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
   ingredientToEdit,
   ingredientCategories = [],
+  existingIngredients = [],
   onSave,
   onCancel,
 }) => {
@@ -43,10 +46,18 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
 
   const libraryCategories = ['Tất cả', 'Thịt tươi', 'Rau củ & Rau thơm', 'Tinh bột', 'Gia vị', 'Đồ uống & Sữa'];
 
+  // Check duplicate ingredient name (accent & tone insensitive)
+  const normalizedName = removeVietnameseTones(name.trim());
+  const duplicateMatch = normalizedName
+    ? existingIngredients.find(
+        (item) => item.id !== ingredientToEdit?.id && removeVietnameseTones(item.name.trim()) === normalizedName
+      )
+    : null;
+
   const filteredPresetIngredients = PRESET_INGREDIENTS_LIBRARY.filter((item) => {
     const matchesCat = libraryFilterCategory === 'Tất cả' || item.category === libraryFilterCategory;
-    const matchesSearch = item.name.toLowerCase().includes(librarySearch.toLowerCase());
-    return matchesCat && matchesSearch;
+    const matchesSearchQuery = matchesSearch(item.name, librarySearch);
+    return matchesCat && matchesSearchQuery;
   });
 
   const handleSelectPreset = (preset: PresetIngredient) => {
@@ -57,21 +68,35 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
     if (preset.pricePerUnit !== undefined) setPricePerUnit(preset.pricePerUnit);
     if (preset.note) setNote(preset.note);
 
-    const priceText = preset.pricePerUnit ? ` • Giá: ${preset.pricePerUnit.toLocaleString('vi-VN')}đ/${preset.unit}` : '';
-    setAutoFilledNotice(`Đã chọn tự động: "${preset.name}" (${preset.unit})${priceText} ✨`);
-    setTimeout(() => setAutoFilledNotice(null), 3000);
+    const isDup = existingIngredients.some(
+      (i) => i.id !== ingredientToEdit?.id && removeVietnameseTones(i.name.trim()) === removeVietnameseTones(preset.name.trim())
+    );
+
+    if (isDup) {
+      setAutoFilledNotice(`⚠️ Nguyên liệu "${preset.name}" đã có trong danh sách nguyên liệu của bạn!`);
+    } else {
+      const priceText = preset.pricePerUnit ? ` • Giá: ${preset.pricePerUnit.toLocaleString('vi-VN')}đ/${preset.unit}` : '';
+      setAutoFilledNotice(`Đã chọn tự động: "${preset.name}" (${preset.unit})${priceText} ✨`);
+    }
+    setTimeout(() => setAutoFilledNotice(null), 3500);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
       alert('Vui lòng nhập tên nguyên liệu!');
+      return;
+    }
+
+    if (duplicateMatch) {
+      alert(`⚠️ Nguyên liệu "${duplicateMatch.name}" đã tồn tại trong danh sách! (Đơn vị: ${duplicateMatch.unit}, Danh mục: ${duplicateMatch.category}). Vui lòng chọn tên khác.`);
       return;
     }
 
     const item: IngredientItem = {
       id: ingredientToEdit?.id || `ing-${Date.now()}`,
-      name,
+      name: trimmedName,
       unit,
       category,
       pricePerUnit: pricePerUnit === '' ? undefined : Number(pricePerUnit),
@@ -141,27 +166,77 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
 
         {/* Grid of Preset Ingredients */}
         <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto no-scrollbar pr-1 pt-1">
-          {filteredPresetIngredients.map((item, idx) => (
-            <div
-              key={idx}
-              onClick={() => handleSelectPreset(item)}
-              className="flex items-center gap-2 p-2 rounded-2xl bg-white border border-pink-100 shadow-2xs hover:border-[#FF8FB8] hover:shadow-xs cursor-pointer transition-all active:scale-95 group"
-            >
-              <img
-                src={item.imageUrl}
-                alt={item.name}
-                className="w-10 h-10 rounded-xl object-cover border border-slate-100 flex-shrink-0"
-              />
-              <div className="min-w-0 flex-1">
-                <h4 className="text-xs font-bold text-slate-800 truncate group-hover:text-[#FF8FB8] transition-colors">
-                  {item.name}
-                </h4>
-                <p className="text-[10px] text-slate-400 font-medium truncate">{item.unit}</p>
+          {filteredPresetIngredients.map((item, idx) => {
+            const isAlreadyAdded = existingIngredients.some(
+              (ex) => ex.id !== ingredientToEdit?.id && removeVietnameseTones(ex.name.trim()) === removeVietnameseTones(item.name.trim())
+            );
+
+            return (
+              <div
+                key={idx}
+                onClick={() => handleSelectPreset(item)}
+                className={`flex items-center gap-2 p-2 rounded-2xl bg-white border shadow-2xs hover:border-[#FF8FB8] hover:shadow-xs cursor-pointer transition-all active:scale-95 group relative overflow-hidden ${
+                  isAlreadyAdded ? 'border-amber-200 bg-amber-50/20' : 'border-pink-100'
+                }`}
+              >
+                <img
+                  src={item.imageUrl}
+                  alt={item.name}
+                  className="w-10 h-10 rounded-xl object-cover border border-slate-100 flex-shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1 justify-between">
+                    <h4 className="text-xs font-bold text-slate-800 truncate group-hover:text-[#FF8FB8] transition-colors">
+                      {item.name}
+                    </h4>
+                  </div>
+                  <div className="flex items-center justify-between gap-1 mt-0.5">
+                    <p className="text-[10px] text-slate-400 font-medium truncate">{item.unit}</p>
+                    {isAlreadyAdded && (
+                      <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-full font-black flex-shrink-0">
+                        Đã có
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
+
+      {/* Duplicate Ingredient Warning Card */}
+      {duplicateMatch && (
+        <div className="p-4 bg-rose-50/90 border-2 border-rose-300 rounded-3xl flex items-start gap-3 text-rose-900 shadow-sm animate-fade-in">
+          <div className="w-9 h-9 rounded-2xl bg-rose-500 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+            <AlertTriangle className="w-5 h-5 stroke-[2.5]" />
+          </div>
+          <div className="flex-1 text-xs">
+            <div className="flex items-center justify-between">
+              <h4 className="font-extrabold text-rose-950 text-xs sm:text-sm">
+                ⚠️ Nguyên liệu đã tồn tại!
+              </h4>
+              <span className="px-2 py-0.5 rounded-full bg-rose-200 text-rose-900 text-[10px] font-black">
+                Bị trùng tên
+              </span>
+            </div>
+            <p className="text-rose-800 font-semibold mt-1 leading-relaxed">
+              Nguyên liệu <span className="font-black underline text-rose-950">"{duplicateMatch.name}"</span> đã có sẵn trong hệ thống danh mục.
+            </p>
+            <div className="mt-2 p-2 bg-white/80 rounded-xl border border-rose-200 flex items-center justify-between text-[11px] font-bold">
+              <span className="text-slate-700">Đơn vị: <span className="text-rose-950 font-extrabold">{duplicateMatch.unit}</span> • Loại: <span className="text-rose-950 font-extrabold">{duplicateMatch.category}</span></span>
+              {duplicateMatch.pricePerUnit ? (
+                <span className="text-emerald-700 font-extrabold">{duplicateMatch.pricePerUnit.toLocaleString('vi-VN')}đ/{duplicateMatch.unit}</span>
+              ) : (
+                <span className="text-slate-400 font-normal">Chưa có giá</span>
+              )}
+            </div>
+            <p className="text-[11px] text-rose-700 font-medium mt-1.5">
+              💡 Vui lòng nhập tên khác hoặc hủy để quay lại danh sách nguyên liệu.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Upload Image Box */}
       <div>
@@ -208,8 +283,18 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
             placeholder="Nhập tên nguyên liệu..."
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8] focus:bg-white"
+            className={`w-full bg-slate-50 border rounded-2xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:bg-white transition-all ${
+              duplicateMatch
+                ? 'border-rose-400 ring-2 ring-rose-200 bg-rose-50/20'
+                : 'border-slate-200 focus:ring-[#FF8FB8]'
+            }`}
           />
+          {duplicateMatch && (
+            <div className="flex items-center gap-1.5 mt-1.5 text-rose-600 font-bold text-xs animate-fade-in">
+              <AlertTriangle className="w-4 h-4 text-rose-500 flex-shrink-0" />
+              <span>Nguyên liệu "{duplicateMatch.name}" đã tồn tại trong danh sách!</span>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-2">

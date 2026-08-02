@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { ShoppingListItem, IngredientItem, Recipe } from '../types';
 import { formatCurrency } from '../utils/costUtils';
+import { matchesSearch } from '../utils/stringUtils';
 import { CuteDeleteModal } from '../components/CuteDeleteModal';
 
 interface ShoppingListViewProps {
@@ -100,15 +101,16 @@ export const ShoppingListView: React.FC<ShoppingListViewProps> = ({
   // Filtered List
   const filteredItems = useMemo(() => {
     return shoppingList.filter((item) => {
-      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item.recipeSource && item.recipeSource.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesQuery = matchesSearch(item.name, searchQuery) ||
+        (item.recipeSource && matchesSearch(item.recipeSource, searchQuery)) ||
+        matchesSearch(item.category, searchQuery);
       const matchesCategory = selectedCategoryFilter === 'Tất cả' || item.category === selectedCategoryFilter;
       const matchesStatus =
         statusFilter === 'all' ||
         (statusFilter === 'unbought' && !item.isBought) ||
         (statusFilter === 'bought' && item.isBought);
 
-      return matchesSearch && matchesCategory && matchesStatus;
+      return matchesQuery && matchesCategory && matchesStatus;
     });
   }, [shoppingList, searchQuery, selectedCategoryFilter, statusFilter]);
 
@@ -186,7 +188,7 @@ export const ShoppingListView: React.FC<ShoppingListViewProps> = ({
   const ingredientSuggestions = useMemo(() => {
     if (!newItemName.trim()) return [];
     return allIngredients.filter((i) =>
-      i.name.toLowerCase().includes(newItemName.toLowerCase())
+      matchesSearch(i.name, newItemName)
     ).slice(0, 5);
   }, [allIngredients, newItemName]);
 

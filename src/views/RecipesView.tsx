@@ -4,6 +4,7 @@ import { Search, MoreVertical, Plus, ChefHat, ArrowUpDown, Star, Calendar, Check
 import { Category, IngredientItem, Recipe } from '../types';
 import { shareRecipeData } from '../utils/shareUtils';
 import { calculateRecipeTotalCost, formatCurrency } from '../utils/costUtils';
+import { matchesSearch } from '../utils/stringUtils';
 import { CuteDeleteModal } from '../components/CuteDeleteModal';
 
 export type SortOption = 'date_desc' | 'date_asc' | 'name_asc' | 'name_desc' | 'rating_desc';
@@ -107,15 +108,15 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
     .filter((r) => {
       const matchesCategory =
         selectedCategory === 'Tất cả' || r.category === selectedCategory;
-      const q = searchQuery.trim().toLowerCase();
-      const matchesSearch =
+      const q = searchQuery.trim();
+      const matchesSearchQuery =
         !q ||
-        r.title.toLowerCase().includes(q) ||
-        r.description.toLowerCase().includes(q) ||
-        r.category.toLowerCase().includes(q) ||
+        matchesSearch(r.title, q) ||
+        matchesSearch(r.description, q) ||
+        matchesSearch(r.category, q) ||
         (r.ingredients &&
-          r.ingredients.some((ing) => ing.ingredientName.toLowerCase().includes(q)));
-      return matchesCategory && matchesSearch;
+          r.ingredients.some((ing) => matchesSearch(ing.ingredientName, q)));
+      return matchesCategory && matchesSearchQuery;
     })
     .sort((a, b) => {
       if (sortBy === 'name_asc') {
@@ -344,9 +345,9 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
                     </div>
                   )}
                   {searchQuery.trim() && (() => {
-                    const q = searchQuery.trim().toLowerCase();
+                    const q = searchQuery.trim();
                     const matchedIngs = recipe.ingredients.filter((ing) =>
-                      ing.ingredientName.toLowerCase().includes(q)
+                      matchesSearch(ing.ingredientName, q)
                     );
                     if (matchedIngs.length > 0) {
                       return (

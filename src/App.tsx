@@ -23,6 +23,13 @@ import { BatchAddShoppingModal } from './components/BatchAddShoppingModal';
 
 import { INITIAL_RECIPES, INITIAL_INGREDIENTS, INITIAL_CATEGORIES, INITIAL_SHOPPING_LIST } from './data/mockData';
 import { ActiveTab, Category, IngredientItem, Recipe, ShoppingListItem } from './types';
+import {
+  seedCollectionIfEmpty,
+  subscribeCollection,
+  syncSaveDoc,
+  syncDeleteDoc,
+  syncBatchSave,
+} from './services/firestoreSync';
 
 export default function App() {
   const { isOffline } = useOffline();
@@ -100,6 +107,69 @@ export default function App() {
     localStorage.setItem('app_shopping_list', JSON.stringify(shoppingList));
   }, [shoppingList]);
 
+  // Firestore Real-Time Cloud Sync (Online mode for Vercel)
+  const [isCloudSynced, setIsCloudSynced] = useState<boolean>(true);
+
+  useEffect(() => {
+    // 1. Seed initial data if Firestore collections are empty
+    seedCollectionIfEmpty('recipes', INITIAL_RECIPES);
+    seedCollectionIfEmpty('ingredients', INITIAL_INGREDIENTS);
+    seedCollectionIfEmpty('categories', INITIAL_CATEGORIES);
+    seedCollectionIfEmpty('shoppingList', INITIAL_SHOPPING_LIST);
+
+    // 2. Subscribe to real-time updates from Firestore
+    const unsubRecipes = subscribeCollection<Recipe>(
+      'recipes',
+      (remoteRecipes) => {
+        if (remoteRecipes && remoteRecipes.length > 0) {
+          setRecipes(remoteRecipes);
+        }
+        setIsCloudSynced(true);
+      },
+      () => setIsCloudSynced(false)
+    );
+
+    const unsubIngredients = subscribeCollection<IngredientItem>(
+      'ingredients',
+      (remoteIngs) => {
+        if (remoteIngs && remoteIngs.length > 0) {
+          setIngredients(remoteIngs);
+        }
+        setIsCloudSynced(true);
+      },
+      () => setIsCloudSynced(false)
+    );
+
+    const unsubCategories = subscribeCollection<Category>(
+      'categories',
+      (remoteCats) => {
+        if (remoteCats && remoteCats.length > 0) {
+          setCategories(remoteCats);
+        }
+        setIsCloudSynced(true);
+      },
+      () => setIsCloudSynced(false)
+    );
+
+    const unsubShopping = subscribeCollection<ShoppingListItem>(
+      'shoppingList',
+      (remoteShop) => {
+        if (remoteShop) {
+          setShoppingList(remoteShop);
+        }
+        setIsCloudSynced(true);
+      },
+      () => setIsCloudSynced(false)
+    );
+
+    return () => {
+      unsubRecipes();
+      unsubIngredients();
+      unsubCategories();
+      unsubShopping();
+    };
+  }, []);
+
   // Navigation State
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [subView, setSubView] = useState<'none' | 'recipe_detail' | 'add_recipe' | 'edit_recipe' | 'add_ingredient' | 'edit_ingredient'>('none');
@@ -113,21 +183,32 @@ export default function App() {
 
   // Shopping List Handlers
   const handleToggleShoppingItem = (id: string) => {
-    setShoppingList((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, isBought: !item.isBought } : item))
-    );
+    setShoppingList((prev) => {
+      const next = prev.map((item) => {
+        if (item.id === id) {
+          const updated = { ...item, isBought: !item.isBought };
+          syncSaveDoc('shoppingList', updated);
+          return updated;
+        }
+        return item;
+      });
+      return next;
+    });
   };
 
   const handleUpdateShoppingItemAmount = (id: string, delta: number) => {
-    setShoppingList((prev) =>
-      prev.map((item) => {
+    setShoppingList((prev) => {
+      const next = prev.map((item) => {
         if (item.id === id) {
           const newAmount = Math.max(0.1, Math.round((item.amount + delta) * 10) / 10);
-          return { ...item, amount: newAmount };
+          const updated = { ...item, amount: newAmount };
+          syncSaveDoc('shoppingList', updated);
+          return updated;
         }
         return item;
-      })
-    );
+      });
+      return next;
+    });
   };
 
   const handleAddShoppingItem = (newItem: Omit<ShoppingListItem, 'id' | 'createdAt'>) => {
@@ -137,6 +218,7 @@ export default function App() {
       createdAt: new Date().toLocaleDateString('vi-VN'),
     };
     setShoppingList((prev) => [created, ...prev]);
+    syncSaveDoc('shoppingList', created);
   };
 
   const handleAddBatchShoppingItems = (items: Omit<ShoppingListItem, 'id' | 'createdAt'>[]) => {
@@ -172,6 +254,7 @@ export default function App() {
         }
       });
 
+      syncBatchSave('shoppingList', nextList);
       return nextList;
     });
   };
@@ -212,13 +295,16 @@ export default function App() {
 
   const handleDeleteShoppingItem = (id: string) => {
     setShoppingList((prev) => prev.filter((i) => i.id !== id));
+    syncDeleteDoc('shoppingList', id);
   };
 
   const handleClearBoughtShoppingItems = () => {
+    shoppingList.filter((i) => i.isBought).forEach((i) => syncDeleteDoc('shoppingList', i.id));
     setShoppingList((prev) => prev.filter((i) => !i.isBought));
   };
 
   const handleClearAllShoppingItems = () => {
+    shoppingList.forEach((i) => syncDeleteDoc('shoppingList', i.id));
     setShoppingList([]);
   };
 
@@ -264,6 +350,7 @@ export default function App() {
       }
       return [savedRecipe, ...prev];
     });
+    syncSaveDoc('recipes', savedRecipe);
 
     // Navigate to recipe detail or recipes list
     setSelectedRecipeId(savedRecipe.id);
@@ -272,6 +359,7 @@ export default function App() {
 
   const handleDeleteRecipe = (recipeId: string) => {
     setRecipes((prev) => prev.filter((r) => r.id !== recipeId));
+    syncDeleteDoc('recipes', recipeId);
     if (selectedRecipeId === recipeId) {
       setSubView('none');
       setActiveTab('recipes');
@@ -286,6 +374,7 @@ export default function App() {
       }
       return [savedIngredient, ...prev];
     });
+    syncSaveDoc('ingredients', savedIngredient);
 
     setSubView('none');
     setActiveTab('ingredients');
@@ -293,20 +382,28 @@ export default function App() {
 
   const handleDeleteIngredient = (ingId: string) => {
     setIngredients((prev) => prev.filter((i) => i.id !== ingId));
+    syncDeleteDoc('ingredients', ingId);
   };
 
   const handleAddCategory = (newCat: Category) => {
     setCategories((prev) => [...prev, newCat]);
+    syncSaveDoc('categories', newCat);
   };
 
   const handleDeleteCategory = (categoryId: string) => {
     setCategories((prev) => prev.filter((c) => c.id !== categoryId));
+    syncDeleteDoc('categories', categoryId);
   };
 
   const handleResetData = () => {
     setRecipes(INITIAL_RECIPES);
     setIngredients(INITIAL_INGREDIENTS);
     setCategories(INITIAL_CATEGORIES);
+    setShoppingList(INITIAL_SHOPPING_LIST);
+    syncBatchSave('recipes', INITIAL_RECIPES);
+    syncBatchSave('ingredients', INITIAL_INGREDIENTS);
+    syncBatchSave('categories', INITIAL_CATEGORIES);
+    syncBatchSave('shoppingList', INITIAL_SHOPPING_LIST);
     localStorage.clear();
     setSubView('none');
     setActiveTab('home');
@@ -316,6 +413,9 @@ export default function App() {
     setRecipes(data.recipes);
     setIngredients(data.ingredients);
     setCategories(data.categories);
+    syncBatchSave('recipes', data.recipes);
+    syncBatchSave('ingredients', data.ingredients);
+    syncBatchSave('categories', data.categories);
     setSubView('none');
     setActiveTab('home');
   };
@@ -402,6 +502,7 @@ export default function App() {
             isAdmin={isAdmin}
             onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
             onLogoutAdmin={handleAdminLogout}
+            isCloudSynced={isCloudSynced}
           />
 
           {/* Offline Notice Banner */}
@@ -454,6 +555,7 @@ export default function App() {
               />
             ) : subView === 'add_ingredient' ? (
               <AddIngredientView
+                existingIngredients={ingredients}
                 ingredientCategories={categories.filter((c) => c.type === 'ingredient')}
                 onSave={handleSaveIngredient}
                 onCancel={() => setSubView('none')}
@@ -461,6 +563,7 @@ export default function App() {
             ) : subView === 'edit_ingredient' && selectedIngredient ? (
               <AddIngredientView
                 ingredientToEdit={selectedIngredient}
+                existingIngredients={ingredients}
                 ingredientCategories={categories.filter((c) => c.type === 'ingredient')}
                 onSave={handleSaveIngredient}
                 onCancel={() => setSubView('none')}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Menu, Search, MoreVertical, Check, Pencil, Bell, Scale, Sparkles, ShieldCheck, Lock, Unlock } from 'lucide-react';
+import { ArrowLeft, Menu, Search, MoreVertical, Check, Pencil, Bell, Scale, Sparkles, ShieldCheck, Lock, Cloud } from 'lucide-react';
 
 interface HeaderProps {
   title: string;
@@ -24,6 +24,7 @@ interface HeaderProps {
   isAdmin?: boolean;
   onOpenAdminLogin?: () => void;
   onLogoutAdmin?: () => void;
+  isCloudSynced?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -49,6 +50,7 @@ export const Header: React.FC<HeaderProps> = ({
   isAdmin,
   onOpenAdminLogin,
   onLogoutAdmin,
+  isCloudSynced = true,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-pink-100/80 shadow-xs transition-all">
@@ -100,6 +102,17 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
       <div className="flex items-center gap-1">
+        {/* Cloud Online Sync Badge */}
+        {isCloudSynced && (
+          <div
+            title="Dữ liệu đã tự động đồng bộ Cloud Firestore (Online trên Vercel)"
+            className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200/80 text-[10px] font-extrabold mr-1 shadow-2xs"
+          >
+            <Cloud className="w-3 h-3 text-sky-500 animate-pulse" />
+            <span>Cloud Sync</span>
+          </div>
+        )}
+
         {/* Admin Badge / Login Toggle */}
         {isAdmin ? (
           <button

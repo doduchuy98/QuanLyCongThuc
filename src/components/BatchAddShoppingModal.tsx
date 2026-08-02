@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, ShoppingCart, Plus, Minus, Search, Check, Calculator, Sparkles, ChefHat } from 'lucide-react';
 import { Recipe, IngredientItem, ShoppingListItem } from '../types';
 import { formatCurrency } from '../utils/costUtils';
+import { matchesSearch } from '../utils/stringUtils';
 
 interface BatchAddShoppingModalProps {
   isOpen: boolean;
@@ -147,8 +148,8 @@ export const BatchAddShoppingModal: React.FC<BatchAddShoppingModalProps> = ({
 
   const filteredRecipes = recipes.filter(
     (r) =>
-      r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.category.toLowerCase().includes(searchQuery.toLowerCase())
+      matchesSearch(r.title, searchQuery) ||
+      matchesSearch(r.category, searchQuery)
   );
 
   return (

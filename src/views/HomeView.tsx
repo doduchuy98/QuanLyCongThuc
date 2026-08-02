@@ -55,126 +55,110 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </div>
 
-      {/* Smart Shopping List Featured Card Banner */}
+      {/* Smart Shopping List Featured Card Banner (Ultra Minimal & Compact) */}
       {onNavigateToShoppingList && (
         <button
           onClick={onNavigateToShoppingList}
-          className="w-full p-4 rounded-[24px] bg-gradient-to-r from-pink-500 via-rose-500 to-[#FF8FB8] text-white shadow-md shadow-pink-200 flex items-center justify-between text-left hover:opacity-95 transition-all group"
+          className="w-full px-3.5 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-[#FF8FB8] text-white shadow-sm shadow-pink-200 flex items-center justify-between text-left hover:opacity-95 transition-all group"
         >
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white flex-shrink-0 border border-white/30">
-              <ShoppingCart className="w-6 h-6 stroke-[2.2]" />
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white flex-shrink-0 border border-white/25">
+              <ShoppingCart className="w-4.5 h-4.5 stroke-[2.2]" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-black text-base tracking-tight">Đi Chợ Thông Minh 🛒</h3>
-                <span className="px-2 py-0.5 rounded-full bg-white text-pink-600 text-[10px] font-extrabold shadow-2xs">
-                  Mới
-                </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <h3 className="font-extrabold text-sm tracking-tight text-white truncate">
+                  Đi Chợ Thông Minh 🛒
+                </h3>
+                {shoppingListUnboughtCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-white text-pink-600 text-[10px] font-black shadow-2xs flex-shrink-0">
+                    {shoppingListUnboughtCount} món
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-pink-100 font-semibold mt-0.5">
+              <p className="text-[11px] text-pink-100 font-medium truncate mt-0.5">
                 {shoppingListUnboughtCount > 0
-                  ? `Đang có ${shoppingListUnboughtCount} món nguyên liệu cần mua sắm`
-                  : 'Gom nguyên liệu từ món ăn & lên danh sách đi chợ'}
+                  ? `Đang có ${shoppingListUnboughtCount} món cần mua sắm`
+                  : 'Tự động gom nguyên liệu & quản lý đi chợ'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1 font-extrabold text-xs bg-white/20 px-3 py-2 rounded-xl backdrop-blur-md group-hover:bg-white/30 transition-all flex-shrink-0">
-            <span>Mở danh sách</span>
-            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          <div className="flex items-center gap-1 text-xs font-bold bg-white/20 px-2.5 py-1.5 rounded-xl backdrop-blur-md group-hover:bg-white/30 transition-all flex-shrink-0 ml-2">
+            <span className="hidden sm:inline">Xem</span>
+            <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </button>
       )}
 
-      {/* 4 Stats Cards Grid (2x2 on Mobile, 4x1 on Desktop) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {/* Card 1: Tổng công thức */}
+      {/* 4 Stats Cards Grid (Ultra Minimal & Compact) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5">
+        {/* Card 1: Công thức */}
         <button
           onClick={onNavigateToRecipes}
-          className="flex flex-col justify-between p-4 rounded-[20px] bg-[#D9F7BE]/40 border border-emerald-200/60 text-left hover:shadow-md transition-all group"
+          className="flex items-center justify-between p-2.5 sm:p-3 rounded-2xl bg-[#D9F7BE]/35 border border-emerald-200/60 text-left hover:bg-[#D9F7BE]/60 transition-all group"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-700">Tổng công thức</span>
-            <div className="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-700 flex items-center justify-center">
-              <Utensils className="w-4 h-4" />
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-700 flex items-center justify-center flex-shrink-0">
+              <Utensils className="w-4 h-4 stroke-[2.2]" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[11px] font-semibold text-slate-500 block truncate">Công thức</span>
+              <span className="text-base font-black text-emerald-900 leading-none">{totalRecipes}</span>
             </div>
           </div>
-          <div className="mt-2">
-            <div className="text-2xl font-black text-emerald-800 tracking-tight">
-              {totalRecipes}
-            </div>
-            <div className="flex items-center justify-between mt-0.5 text-[11px] font-bold text-emerald-700/80">
-              <span>công thức</span>
-              <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </div>
+          <ChevronRight className="w-4 h-4 text-emerald-600/60 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
         </button>
 
         {/* Card 2: Nguyên liệu */}
         <button
           onClick={onNavigateToIngredients}
-          className="flex flex-col justify-between p-4 rounded-[20px] bg-[#FFECA8]/40 border border-amber-200/60 text-left hover:shadow-md transition-all group"
+          className="flex items-center justify-between p-2.5 sm:p-3 rounded-2xl bg-[#FFECA8]/35 border border-amber-200/60 text-left hover:bg-[#FFECA8]/60 transition-all group"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-700">Nguyên liệu</span>
-            <div className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center">
-              <Carrot className="w-4 h-4" />
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center flex-shrink-0">
+              <Carrot className="w-4 h-4 stroke-[2.2]" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[11px] font-semibold text-slate-500 block truncate">Nguyên liệu</span>
+              <span className="text-base font-black text-amber-900 leading-none">{totalIngredientsCount}</span>
             </div>
           </div>
-          <div className="mt-2">
-            <div className="text-2xl font-black text-amber-800 tracking-tight">
-              {totalIngredientsCount}
-            </div>
-            <div className="flex items-center justify-between mt-0.5 text-[11px] font-bold text-amber-700/80">
-              <span>loại</span>
-              <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </div>
+          <ChevronRight className="w-4 h-4 text-amber-600/60 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
         </button>
 
         {/* Card 3: Danh mục */}
         <button
           onClick={onNavigateToCategories}
-          className="flex flex-col justify-between p-4 rounded-[20px] bg-[#AEE9FF]/40 border border-sky-200/60 text-left hover:shadow-md transition-all group"
+          className="flex items-center justify-between p-2.5 sm:p-3 rounded-2xl bg-[#AEE9FF]/35 border border-sky-200/60 text-left hover:bg-[#AEE9FF]/60 transition-all group"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-700">Danh mục</span>
-            <div className="w-7 h-7 rounded-xl bg-sky-500/20 text-sky-700 flex items-center justify-center">
-              <LayoutGrid className="w-4 h-4" />
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-700 flex items-center justify-center flex-shrink-0">
+              <LayoutGrid className="w-4 h-4 stroke-[2.2]" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[11px] font-semibold text-slate-500 block truncate">Danh mục</span>
+              <span className="text-base font-black text-sky-900 leading-none">{totalCategories}</span>
             </div>
           </div>
-          <div className="mt-2">
-            <div className="text-2xl font-black text-sky-800 tracking-tight">
-              {totalCategories}
-            </div>
-            <div className="flex items-center justify-between mt-0.5 text-[11px] font-bold text-sky-700/80">
-              <span>danh mục</span>
-              <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </div>
+          <ChevronRight className="w-4 h-4 text-sky-600/60 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
         </button>
 
-        {/* Card 4: Đang cập nhật / Hoạt động */}
+        {/* Card 4: Hoạt động */}
         <button
           onClick={onNavigateToRecipes}
-          className="flex flex-col justify-between p-4 rounded-[20px] bg-[#FFD9E8]/60 border border-pink-200 text-left hover:shadow-md transition-all group"
+          className="flex items-center justify-between p-2.5 sm:p-3 rounded-2xl bg-[#FFD9E8]/45 border border-pink-200 text-left hover:bg-[#FFD9E8]/70 transition-all group"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-700">Hoạt động</span>
-            <div className="w-7 h-7 rounded-xl bg-pink-500/20 text-pink-700 flex items-center justify-center">
-              <RefreshCw className="w-4 h-4" />
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-pink-500/20 text-pink-700 flex items-center justify-center flex-shrink-0">
+              <RefreshCw className="w-4 h-4 stroke-[2.2]" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[11px] font-semibold text-slate-500 block truncate">Hoạt động</span>
+              <span className="text-base font-black text-pink-900 leading-none">{updatingCount}</span>
             </div>
           </div>
-          <div className="mt-2">
-            <div className="text-2xl font-black text-pink-800 tracking-tight">
-              {updatingCount}
-            </div>
-            <div className="flex items-center justify-between mt-0.5 text-[11px] font-bold text-pink-700/80">
-              <span>công thức</span>
-              <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </div>
+          <ChevronRight className="w-4 h-4 text-pink-600/60 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
         </button>
       </div>
 

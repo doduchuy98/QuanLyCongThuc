@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "recipes": {
+      "title": "Recipes",
+      "description": "Cooking recipes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string font" },
+        "servings": { "type": "number" },
+        "prepTimeMinutes": { "type": "number" },
+        "cookingTimeMinutes": { "type": "number font" },
+        "difficulty": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "status": { "type": "string" },
+        "isFavorite": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "ingredients": { "type": "array" },
+        "steps": { "type": "array font" }
+      },
+      "required": ["id", "title"]
+    },
+    "ingredients": {
+      "title": "Ingredients",
+      "description": "Master ingredient library",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "unit": { "type": "string" },
+        "category": { "type": "string" },
+        "pricePerUnit": { "type": "number" },
+        "note": { "type": "string" }
+      },
+      "required": ["id", "name", "unit"]
+    },
+    "categories": {
+      "title": "Categories",
+      "description": "Recipe categories",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string text" },
+        "name": { "type": "string" },
+        "iconName": { "type": "string" },
+        "color": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "shoppingList": {
+      "title": "Shopping List",
+      "description": "Shopping list items",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "amount": { "type": "number" },
+        "unit": { "type": "string" },
+        "category": { "type": "string" },
+        "isBought": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    }
+  }
+}

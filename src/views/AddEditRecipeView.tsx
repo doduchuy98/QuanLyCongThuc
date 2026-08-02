@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Upload, Plus, Trash2, Check, Sparkles, Search, Carrot, X, ImageOff, Coins } from 'lucide-react';
 import { Category, IngredientItem, Recipe, RecipeIngredient, CookingStep } from '../types';
 import { calculateRecipeTotalCost, getIngredientCostDetails, formatCurrency } from '../utils/costUtils';
+import { matchesSearch } from '../utils/stringUtils';
 import { CuteDeleteModal } from '../components/CuteDeleteModal';
 
 interface AddEditRecipeViewProps {
@@ -100,8 +101,8 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
 
   const filteredAvailableIngredients = availableIngredients.filter((ing) => {
     const matchesCat = pickerCategoryFilter === 'Tất cả' || ing.category === pickerCategoryFilter;
-    const matchesSearch = ing.name.toLowerCase().includes(pickerSearch.toLowerCase());
-    return matchesCat && matchesSearch;
+    const matchesQuery = matchesSearch(ing.name, pickerSearch) || matchesSearch(ing.category, pickerSearch);
+    return matchesCat && matchesQuery;
   });
 
   const handleSelectFromPicker = (ingItem: IngredientItem) => {
@@ -475,6 +476,18 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
+                </div>
+
+                {/* Note / Prep instructions row */}
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <span className="text-[10.5px] font-bold text-slate-400 flex-shrink-0">Ghi chú:</span>
+                  <input
+                    type="text"
+                    placeholder="Ghi chú sơ chế (vd: bằm nhỏ, xắt mỏng, bỏ hạt...)"
+                    value={ing.note || ''}
+                    onChange={(e) => handleUpdateIngredient(idx, 'note', e.target.value)}
+                    className="w-full bg-white border border-slate-200/90 rounded-xl px-2 py-1 text-[11px] font-semibold text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-[#FF8FB8]"
+                  />
                 </div>
 
                 {/* Calculated Cost & Unit conversion details Footer */}
