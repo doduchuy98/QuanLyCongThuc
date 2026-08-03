@@ -73,3 +73,17 @@ export interface ShoppingListItem {
 }
 
 export type ActiveTab = 'home' | 'recipes' | 'categories' | 'browser' | 'settings';
+
+export type AppMode = 'kitchen' | 'finance';
+
+export interface ExpenseItem {
+  id: string;
+  type: 'expense' | 'income';
+  amount: number;
+  category: string;
+  note: string;
+  date: string;
+  paymentMethod?: 'cash' | 'transfer' | 'card';
+  createdAt: string;
+}
+

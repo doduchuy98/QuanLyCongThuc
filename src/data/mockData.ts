@@ -1,4 +1,57 @@
-import { Category, IngredientItem, Recipe, ShoppingListItem, UnitConversionRule } from '../types';
+import { Category, IngredientItem, Recipe, ShoppingListItem, UnitConversionRule, ExpenseItem } from '../types';
+
+export const INITIAL_EXPENSES: ExpenseItem[] = [
+  {
+    id: 'exp-1',
+    type: 'income',
+    amount: 15000000,
+    category: 'Lương & Thưởng',
+    note: 'Lương nhận chuyển khoản đầu tháng',
+    date: new Date().toISOString().split('T')[0],
+    paymentMethod: 'transfer',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'exp-2',
+    type: 'expense',
+    amount: 320000,
+    category: 'Đi chợ & Siêu thị',
+    note: 'Đi chợ mua thịt heo, tôm, rau củ tuần này',
+    date: new Date().toISOString().split('T')[0],
+    paymentMethod: 'transfer',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'exp-3',
+    type: 'expense',
+    amount: 85000,
+    category: 'Ăn uống',
+    note: 'Cơm tấm & cà phê sáng',
+    date: new Date().toISOString().split('T')[0],
+    paymentMethod: 'cash',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'exp-4',
+    type: 'expense',
+    amount: 650000,
+    category: 'Hóa đơn & Tiền nhà',
+    note: 'Tiền điện & internet gia đình',
+    date: new Date().toISOString().split('T')[0],
+    paymentMethod: 'transfer',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'exp-5',
+    type: 'expense',
+    amount: 120000,
+    category: 'Di chuyển',
+    note: 'Đổ xăng xe máy',
+    date: new Date().toISOString().split('T')[0],
+    paymentMethod: 'cash',
+    createdAt: new Date().toISOString(),
+  },
+];
 
 export const INITIAL_SHOPPING_LIST: ShoppingListItem[] = [
   {

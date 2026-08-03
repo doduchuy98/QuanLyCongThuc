@@ -1,5 +1,5 @@
 import React from 'react';
-import { Utensils, LayoutGrid, RefreshCw, ChevronRight, Globe, ImageOff, MoreVertical } from 'lucide-react';
+import { Utensils, LayoutGrid, RefreshCw, ChevronRight, Globe, ImageOff, MoreVertical, PiggyBank, ArrowRight } from 'lucide-react';
 import { Category, Recipe } from '../types';
 
 interface HomeViewProps {
@@ -9,6 +9,7 @@ interface HomeViewProps {
   onNavigateToRecipes: () => void;
   onNavigateToCategories: () => void;
   onNavigateToBrowser?: () => void;
+  onSwitchToExpense?: () => void;
   onSelectRecipe: (recipeId: string) => void;
 }
 
@@ -18,8 +19,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onNavigateToRecipes,
   onNavigateToCategories,
   onNavigateToBrowser,
+  onSwitchToExpense,
   onSelectRecipe,
 }) => {
+
   const totalRecipes = recipes.length;
   const totalCategories = categories.length;
   const updatingCount = recipes.filter((r) => r.isActive).length;
@@ -75,6 +78,38 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <div className="flex items-center gap-1 text-xs font-bold bg-white/20 px-2.5 py-1.5 rounded-xl backdrop-blur-md group-hover:bg-white/30 transition-all flex-shrink-0 ml-2">
             <span className="hidden sm:inline">Khám phá</span>
             <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+          </div>
+        </button>
+      )}
+
+      {/* Mode Switch Card Banner: Switch to Personal Expense Management */}
+      {onSwitchToExpense && (
+        <button
+          onClick={onSwitchToExpense}
+          className="w-full px-3.5 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 text-white shadow-md shadow-emerald-200 flex items-center justify-between text-left hover:opacity-95 transition-all group border border-emerald-400/30"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white flex-shrink-0 border border-white/30 shadow-2xs">
+              <PiggyBank className="w-5 h-5 stroke-[2.2]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <h3 className="font-extrabold text-sm tracking-tight text-white truncate">
+                  Quản Lý Chi Tiêu Cá Nhân 💳
+                </h3>
+                <span className="px-1.5 py-0.2 rounded-full bg-emerald-400/30 text-emerald-100 text-[10px] font-black border border-white/20">
+                  Mới
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-100 font-medium truncate mt-0.5">
+                Ghi chép thu chi, quản lý ngân sách sinh hoạt & tiền chợ hàng ngày
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 text-xs font-black bg-white text-emerald-800 px-3 py-1.5 rounded-xl shadow-xs group-hover:scale-105 transition-all flex-shrink-0 ml-2">
+            <span>Mở ngay</span>
+            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform text-emerald-700" />
           </div>
         </button>
       )}

@@ -1,6 +1,6 @@
 import React from 'react';
-import { Home, ChefHat, LayoutGrid, Settings, Plus, Scale, ShieldCheck, Lock, Sparkles, Heart, Globe } from 'lucide-react';
-import { ActiveTab } from '../types';
+import { Home, ChefHat, LayoutGrid, Settings, Plus, Scale, ShieldCheck, Lock, Sparkles, Heart, Globe, PiggyBank, Utensils } from 'lucide-react';
+import { ActiveTab, AppMode } from '../types';
 
 interface SidebarProps {
   activeTab: ActiveTab;
@@ -13,6 +13,8 @@ interface SidebarProps {
   onLogoutAdmin?: () => void;
   onQuickAddClick?: () => void;
   onOpenUnitConverter?: () => void;
+  appMode?: AppMode;
+  onToggleAppMode?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -26,7 +28,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onLogoutAdmin,
   onQuickAddClick,
   onOpenUnitConverter,
+  appMode = 'kitchen',
+  onToggleAppMode,
 }) => {
+
   const navItems = [
     { id: 'home' as ActiveTab, label: 'Trang chủ', icon: Home, count: null },
     { id: 'recipes' as ActiveTab, label: 'Công thức', icon: ChefHat, count: recipesCount },
@@ -49,10 +54,45 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <Sparkles className="w-3.5 h-3.5 text-pink-400 fill-pink-400 inline" />
             </h1>
             <p className="text-[11px] font-semibold text-slate-400">
-              Công thức & Quản lý món ăn
+              {appMode === 'kitchen' ? 'Công thức & Quản lý món ăn' : 'Sổ tay thu chi cá nhân'}
             </p>
           </div>
         </div>
+
+        {/* Mode Switch Button */}
+        {onToggleAppMode && (
+          <button
+            onClick={onToggleAppMode}
+            className={`w-full p-3 rounded-2xl border text-left font-black text-xs shadow-2xs transition-all flex items-center justify-between group active:scale-98 ${
+              appMode === 'kitchen'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                : 'bg-pink-50 text-pink-800 border-pink-200 hover:bg-pink-100'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-8 h-8 rounded-xl flex items-center justify-center text-white ${
+                  appMode === 'kitchen' ? 'bg-emerald-600' : 'bg-[#FF8FB8]'
+                }`}
+              >
+                {appMode === 'kitchen' ? (
+                  <PiggyBank className="w-4 h-4" />
+                ) : (
+                  <Utensils className="w-4 h-4" />
+                )}
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-bold text-slate-400">Chế độ hiện tại</p>
+                <p className="text-xs font-black">
+                  {appMode === 'kitchen' ? 'Quản lý Bếp 🍳' : 'Quản lý Chi tiêu 💳'}
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-extrabold bg-white px-2 py-1 rounded-lg shadow-2xs">
+              Đổi ↗
+            </span>
+          </button>
+        )}
 
         {/* Navigation Items */}
         <nav className="space-y-1.5">

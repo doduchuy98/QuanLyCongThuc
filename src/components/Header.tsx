@@ -1,5 +1,6 @@
 import React from 'react';
-import { ArrowLeft, Menu, Search, MoreVertical, Check, Pencil, Bell, Scale, Sparkles, ShieldCheck, Lock, Cloud } from 'lucide-react';
+import { ArrowLeft, Menu, Search, MoreVertical, Check, Pencil, Bell, Scale, Sparkles, ShieldCheck, Lock, Cloud, Utensils, PiggyBank } from 'lucide-react';
+import { AppMode } from '../types';
 
 interface HeaderProps {
   title: string;
@@ -25,11 +26,13 @@ interface HeaderProps {
   onOpenAdminLogin?: () => void;
   onLogoutAdmin?: () => void;
   isCloudSynced?: boolean;
+  appMode?: AppMode;
+  onToggleAppMode?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   title,
-  marqueeText = 'Website lưu công thức món ăn, sốt được phát triển bởi Đỗ Đức Huy <3',
+  marqueeText = 'Website lưu công thức món ăn & sổ thu chi cá nhân bởi Đỗ Đức Huy <3',
   showBack,
   onBack,
   showSearch,
@@ -51,6 +54,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAdminLogin,
   onLogoutAdmin,
   isCloudSynced = true,
+  appMode = 'kitchen',
+  onToggleAppMode,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-pink-100/80 shadow-xs transition-all">
@@ -76,12 +81,12 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      <div className="px-4 h-14 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="px-3 sm:px-4 h-14 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           {showBack && (
             <button
               onClick={onBack}
-              className="w-9 h-9 rounded-full flex items-center justify-center text-slate-700 hover:bg-pink-50 active:scale-95 transition-all"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-slate-700 hover:bg-pink-50 active:scale-95 transition-all flex-shrink-0"
               aria-label="Quay lại"
             >
               <ArrowLeft className="w-5 h-5 text-slate-700" />
@@ -90,23 +95,54 @@ export const Header: React.FC<HeaderProps> = ({
           {showMenu && (
             <button
               onClick={onMenuClick}
-              className="w-9 h-9 rounded-full flex items-center justify-center text-slate-700 hover:bg-pink-50 active:scale-95 transition-all"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-slate-700 hover:bg-pink-50 active:scale-95 transition-all flex-shrink-0"
               aria-label="Menu"
             >
               <Menu className="w-5 h-5 text-slate-700" />
             </button>
           )}
-          <h1 className="text-lg font-bold text-slate-800 tracking-tight truncate max-w-[180px] sm:max-w-xs md:max-w-none">
+          <h1 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight truncate">
             {title}
           </h1>
         </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        {/* MODE SWITCH BUTTON IN HEADER */}
+        {onToggleAppMode && (
+          <button
+            onClick={onToggleAppMode}
+            title={
+              appMode === 'kitchen'
+                ? 'Đang ở Quản lý Bếp - Nhấn để đổi sang Quản lý Chi tiêu Cá nhân'
+                : 'Đang ở Quản lý Chi tiêu - Nhấn để đổi sang Quản lý Bếp'
+            }
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black shadow-2xs border transition-all active:scale-95 ${
+              appMode === 'kitchen'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                : 'bg-pink-50 text-pink-800 border-pink-200 hover:bg-pink-100'
+            }`}
+          >
+            {appMode === 'kitchen' ? (
+              <>
+                <PiggyBank className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="hidden sm:inline">Quản lý</span>
+                <span>Chi tiêu ↗</span>
+              </>
+            ) : (
+              <>
+                <Utensils className="w-3.5 h-3.5 text-pink-600" />
+                <span className="hidden sm:inline">Quản lý</span>
+                <span>Bếp ↗</span>
+              </>
+            )}
+          </button>
+        )}
+
         {/* Cloud Online Sync Badge */}
         {isCloudSynced && (
           <div
-            title="Dữ liệu đã tự động đồng bộ Cloud Firestore (Online trên Vercel)"
-            className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200/80 text-[10px] font-extrabold mr-1 shadow-2xs"
+            title="Dữ liệu đã tự động đồng bộ Cloud Firestore"
+            className="hidden md:flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200/80 text-[10px] font-extrabold shadow-2xs"
           >
             <Cloud className="w-3 h-3 text-sky-500 animate-pulse" />
             <span>Cloud Sync</span>
@@ -118,7 +154,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onLogoutAdmin}
             title="Nhấn để thoát quyền Admin"
-            className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-extrabold hover:bg-emerald-100 transition-all shadow-2xs mr-1"
+            className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-extrabold hover:bg-emerald-100 transition-all shadow-2xs"
           >
             <ShieldCheck className="w-3 h-3 text-emerald-600" />
             <span>ADMIN</span>
@@ -127,12 +163,13 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onOpenAdminLogin}
             title="Đăng nhập quyền Admin"
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-pink-50 hover:text-pink-600 border border-slate-200/80 text-[10px] font-bold transition-all mr-1"
+            className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-pink-50 hover:text-pink-600 border border-slate-200/80 text-[10px] font-bold transition-all"
           >
             <Lock className="w-3 h-3 text-slate-400" />
             <span>Admin</span>
           </button>
         )}
+
         {showScale && (
           <button
             onClick={onScaleClick}

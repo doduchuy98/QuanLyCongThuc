@@ -21,8 +21,9 @@ import { AdminLoginModal } from './components/AdminLoginModal';
 import { ChangePinModal } from './components/ChangePinModal';
 import { BatchAddShoppingModal } from './components/BatchAddShoppingModal';
 
-import { INITIAL_RECIPES, INITIAL_INGREDIENTS, INITIAL_CATEGORIES, INITIAL_SHOPPING_LIST } from './data/mockData';
-import { ActiveTab, Category, IngredientItem, Recipe, ShoppingListItem } from './types';
+import { INITIAL_RECIPES, INITIAL_INGREDIENTS, INITIAL_CATEGORIES, INITIAL_SHOPPING_LIST, INITIAL_EXPENSES } from './data/mockData';
+import { ActiveTab, Category, IngredientItem, Recipe, ShoppingListItem, AppMode, ExpenseItem } from './types';
+import { ExpenseTrackerView } from './views/ExpenseTrackerView';
 import {
   seedCollectionIfEmpty,
   subscribeCollection,
@@ -68,6 +69,50 @@ export default function App() {
     setAdminPin(newPin);
     localStorage.setItem('app_admin_pin', newPin);
   };
+
+  // App Mode State: 'kitchen' (Quản lý Bếp) or 'finance' (Quản lý Chi tiêu Cá nhân)
+  const [appMode, setAppMode] = useState<AppMode>(() => {
+    const saved = localStorage.getItem('app_mode');
+    return (saved as AppMode) || 'kitchen';
+  });
+
+  const handleToggleAppMode = () => {
+    setAppMode((prev) => {
+      const nextMode = prev === 'kitchen' ? 'finance' : 'kitchen';
+      localStorage.setItem('app_mode', nextMode);
+      return nextMode;
+    });
+  };
+
+  // Expenses State
+  const [expenses, setExpenses] = useState<ExpenseItem[]>(() => {
+    const saved = localStorage.getItem('app_expenses');
+    return saved ? JSON.parse(saved) : INITIAL_EXPENSES;
+  });
+
+  const handleAddExpense = (newItem: Omit<ExpenseItem, 'id' | 'createdAt'>) => {
+    const item: ExpenseItem = {
+      ...newItem,
+      id: `exp-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+    setExpenses((prev) => [item, ...prev]);
+    syncSaveDoc('expenses', item);
+  };
+
+  const handleDeleteExpense = (id: string) => {
+    setExpenses((prev) => prev.filter((item) => item.id !== id));
+    syncDeleteDoc('expenses', id);
+  };
+
+  // Save to LocalStorage
+  useEffect(() => {
+    localStorage.setItem('app_mode', appMode);
+  }, [appMode]);
+
+  useEffect(() => {
+    localStorage.setItem('app_expenses', JSON.stringify(expenses));
+  }, [expenses]);
 
   // Persistence state
   const [recipes, setRecipes] = useState<Recipe[]>(() => {
@@ -124,13 +169,18 @@ export default function App() {
     const savedShopStr = localStorage.getItem('app_shopping_list');
     const localShop: ShoppingListItem[] = savedShopStr ? JSON.parse(savedShopStr) : INITIAL_SHOPPING_LIST;
 
+    const savedExpStr = localStorage.getItem('app_expenses');
+    const localExp: ExpenseItem[] = savedExpStr ? JSON.parse(savedExpStr) : INITIAL_EXPENSES;
+
     // 2. Seed initial data if Firestore collections are empty (preferring user local storage data)
     seedCollectionIfEmpty('recipes', localRecipes);
     seedCollectionIfEmpty('ingredients', localIngs);
     seedCollectionIfEmpty('categories', localCats);
     seedCollectionIfEmpty('shoppingList', localShop);
+    seedCollectionIfEmpty('expenses', localExp);
 
     // 3. Subscribe to real-time updates from Firestore
+
     const unsubRecipes = subscribeCollection<Recipe>(
       'recipes',
       (remoteRecipes) => {
@@ -441,7 +491,9 @@ export default function App() {
   let headerTitle = 'Trang chủ';
   let showBack = false;
 
-  if (subView === 'recipe_detail') {
+  if (appMode === 'finance' && subView === 'none') {
+    headerTitle = 'Quản lý Chi tiêu';
+  } else if (subView === 'recipe_detail') {
     headerTitle = 'Chi tiết công thức';
     showBack = true;
   } else if (subView === 'add_recipe') {
@@ -496,6 +548,8 @@ export default function App() {
           onLogoutAdmin={handleAdminLogout}
           onQuickAddClick={() => setIsQuickAddOpen(true)}
           onOpenUnitConverter={() => setIsUnitConverterOpen(true)}
+          appMode={appMode}
+          onToggleAppMode={handleToggleAppMode}
         />
 
         {/* Main Content Pane */}
@@ -516,6 +570,8 @@ export default function App() {
             onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
             onLogoutAdmin={handleAdminLogout}
             isCloudSynced={isCloudSynced}
+            appMode={appMode}
+            onToggleAppMode={handleToggleAppMode}
           />
 
           {/* Offline Notice Banner */}
@@ -534,7 +590,14 @@ export default function App() {
 
           {/* Main View Scroll Area */}
           <main className="flex-1 overflow-y-auto no-scrollbar">
-            {subView === 'recipe_detail' && selectedRecipe ? (
+            {appMode === 'finance' && subView === 'none' ? (
+              <ExpenseTrackerView
+                expenses={expenses}
+                onAddExpense={handleAddExpense}
+                onDeleteExpense={handleDeleteExpense}
+                onSwitchMode={setAppMode}
+              />
+            ) : subView === 'recipe_detail' && selectedRecipe ? (
               <RecipeDetailView
                 recipe={selectedRecipe}
                 allIngredients={ingredients}
@@ -597,6 +660,7 @@ export default function App() {
                     onNavigateToRecipes={() => handleTabChange('recipes')}
                     onNavigateToCategories={() => handleTabChange('categories')}
                     onNavigateToBrowser={() => handleTabChange('browser')}
+                    onSwitchToExpense={() => setAppMode('finance')}
                     onSelectRecipe={handleSelectRecipe}
                   />
                 )}
