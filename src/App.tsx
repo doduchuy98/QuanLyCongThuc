@@ -637,17 +637,11 @@ export default function App() {
                   <CategoriesView
                     categories={categories}
                     recipes={recipes}
-                    ingredients={ingredients}
                     isAdmin={isAdmin}
                     onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
-                    onSelectCategoryFilter={(catName, catType) => {
-                      if (catType === 'ingredient') {
-                        setSelectedIngredientCategory(catName);
-                        setActiveTab('ingredients');
-                      } else {
-                        setSelectedRecipeCategory(catName);
-                        setActiveTab('recipes');
-                      }
+                    onSelectCategoryFilter={(catName) => {
+                      setSelectedRecipeCategory(catName);
+                      setActiveTab('recipes');
                     }}
                     onAddCategory={handleAddCategory}
                     onDeleteCategory={handleDeleteCategory}
@@ -689,7 +683,6 @@ export default function App() {
           isOpen={isQuickAddOpen}
           onClose={() => setIsQuickAddOpen(false)}
           onAddRecipe={handleStartAddRecipe}
-          onAddIngredient={handleStartAddIngredient}
           onAddCategory={() => {
             setActiveTab('categories');
             setSubView('none');

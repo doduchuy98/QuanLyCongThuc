@@ -1,11 +1,10 @@
 import React from 'react';
-import { ChefHat, Carrot, LayoutGrid, Scale, Settings, X } from 'lucide-react';
+import { ChefHat, LayoutGrid, Scale, Settings, X } from 'lucide-react';
 
 interface QuickAddModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddRecipe: () => void;
-  onAddIngredient: () => void;
   onAddCategory: () => void;
   onOpenUnitConverter: () => void;
   onOpenSettings: () => void;
@@ -15,7 +14,6 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   isOpen,
   onClose,
   onAddRecipe,
-  onAddIngredient,
   onAddCategory,
   onOpenUnitConverter,
   onOpenSettings,
@@ -57,20 +55,6 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             </div>
             <span className="font-bold text-slate-800 text-sm">Thêm công thức</span>
             <span className="text-[11px] text-slate-500 mt-0.5">Tạo món ăn mới</span>
-          </button>
-
-          <button
-            onClick={() => {
-              onClose();
-              onAddIngredient();
-            }}
-            className="flex flex-col items-start p-4 rounded-2xl bg-gradient-to-br from-[#FFECA8]/60 to-[#FFFBEB] border border-amber-200/50 hover:shadow-md transition-all text-left group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-amber-400 text-white flex items-center justify-center mb-2 shadow-sm group-hover:scale-110 transition-transform">
-              <Carrot className="w-5 h-5" />
-            </div>
-            <span className="font-bold text-slate-800 text-sm">Thêm nguyên liệu</span>
-            <span className="text-[11px] text-slate-500 mt-0.5">Định lượng & đơn vị</span>
           </button>
 
           <button
