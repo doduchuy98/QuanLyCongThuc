@@ -20,18 +20,20 @@ import {
   Info,
   Carrot,
 } from 'lucide-react';
-import { ShoppingListItem, IngredientItem, Recipe } from '../types';
+import { ShoppingListItem, IngredientItem, Recipe, Category } from '../types';
 import { formatCurrency } from '../utils/costUtils';
-import { matchesSearch } from '../utils/stringUtils';
+import { matchesSearch, capitalizeWords } from '../utils/stringUtils';
 import { CuteDeleteModal } from '../components/CuteDeleteModal';
 
 interface ShoppingListViewProps {
   shoppingList: ShoppingListItem[];
   allIngredients?: IngredientItem[];
+  categories?: Category[];
   recipes?: Recipe[];
   onToggleItem: (id: string) => void;
   onUpdateAmount: (id: string, delta: number) => void;
   onAddItem: (item: Omit<ShoppingListItem, 'id' | 'createdAt'>) => void;
+  onAddCategory?: (category: Category) => void;
   onDeleteItem: (id: string) => void;
   onClearBought: () => void;
   onClearAll: () => void;
@@ -41,10 +43,12 @@ interface ShoppingListViewProps {
 export const ShoppingListView: React.FC<ShoppingListViewProps> = ({
   shoppingList,
   allIngredients = [],
+  categories = [],
   recipes = [],
   onToggleItem,
   onUpdateAmount,
   onAddItem,
+  onAddCategory,
   onDeleteItem,
   onClearBought,
   onClearAll,
@@ -92,11 +96,15 @@ export const ShoppingListView: React.FC<ShoppingListViewProps> = ({
     return shoppingList.reduce((sum, item) => sum + (item.pricePerUnit || 0) * item.amount, 0);
   }, [shoppingList]);
 
+  const ingredientCategories = categories.filter((c) => c.type === 'ingredient');
+  const unitCategories = categories.filter((c) => c.type === 'unit');
+
   // Categories extraction for filtering
   const categoriesList = useMemo(() => {
-    const cats = shoppingList.map((i) => i.category).filter(Boolean) as string[];
-    return ['Tất cả', ...Array.from(new Set(cats))];
-  }, [shoppingList]);
+    const ingCatNames = ingredientCategories.map((c) => c.name);
+    const listCatNames = shoppingList.map((i) => i.category).filter(Boolean) as string[];
+    return ['Tất cả', ...Array.from(new Set([...ingCatNames, ...listCatNames]))];
+  }, [ingredientCategories, shoppingList]);
 
   // Filtered List
   const filteredItems = useMemo(() => {
@@ -116,7 +124,7 @@ export const ShoppingListView: React.FC<ShoppingListViewProps> = ({
 
   // Handle ingredient suggestion pick
   const handlePickIngredientSuggestion = (ing: IngredientItem) => {
-    setNewItemName(ing.name);
+    setNewItemName(capitalizeWords(ing.name));
     setNewItemUnit(ing.unit);
     if (ing.category) setNewItemCategory(ing.category);
     if (ing.pricePerUnit) setNewItemPrice(ing.pricePerUnit.toString());
@@ -129,12 +137,23 @@ export const ShoppingListView: React.FC<ShoppingListViewProps> = ({
 
     // Find matching global ingredient if price not explicitly entered
     const priceVal = newItemPrice.trim() !== '' ? parseFloat(newItemPrice) : undefined;
+    const cleanUnit = newItemUnit.trim() || 'đơn vị';
+
+    if (cleanUnit && onAddCategory && !unitCategories.some((u) => u.name.toLowerCase() === cleanUnit.toLowerCase())) {
+      onAddCategory({
+        id: `ucat-${Date.now()}`,
+        name: cleanUnit,
+        type: 'unit',
+        iconName: 'Ruler',
+        bgColor: '#AEE9FF',
+      });
+    }
 
     onAddItem({
       name: newItemName.trim(),
       amount: Math.max(0.01, newItemAmount),
-      unit: newItemUnit.trim() || 'đơn vị',
-      category: newItemCategory,
+      unit: cleanUnit,
+      category: newItemCategory || (ingredientCategories[0]?.name || ''),
       pricePerUnit: priceVal,
       isBought: false,
       note: newItemNote.trim() || undefined,
@@ -304,7 +323,7 @@ export const ShoppingListView: React.FC<ShoppingListViewProps> = ({
                   placeholder="Ví dụ: Thịt bò tươi, Rau muống..."
                   value={newItemName}
                   onChange={(e) => {
-                    setNewItemName(e.target.value);
+                    setNewItemName(capitalizeWords(e.target.value));
                     setShowSuggestions(true);
                   }}
                   onFocus={() => setShowSuggestions(true)}
@@ -349,11 +368,17 @@ export const ShoppingListView: React.FC<ShoppingListViewProps> = ({
                   <label className="text-[11px] font-bold text-slate-600">Đơn vị tính</label>
                   <input
                     type="text"
+                    list="shopping-units-list"
                     placeholder="gram, kg, quả..."
                     value={newItemUnit}
                     onChange={(e) => setNewItemUnit(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 focus:outline-hidden focus:border-[#FF8FB8]"
                   />
+                  <datalist id="shopping-units-list">
+                    {unitCategories.map((u) => (
+                      <option key={u.id} value={u.name} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
 
@@ -365,12 +390,17 @@ export const ShoppingListView: React.FC<ShoppingListViewProps> = ({
                   onChange={(e) => setNewItemCategory(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 focus:outline-hidden focus:border-[#FF8FB8]"
                 >
-                  <option value="Rau củ & Rau thơm">Rau củ & Rau thơm</option>
-                  <option value="Thịt tươi">Thịt tươi</option>
-                  <option value="Hải sản tươi">Hải sản tươi</option>
-                  <option value="Gia vị & Nước sốt">Gia vị & Nước sốt</option>
-                  <option value="Thực phẩm khô / trứng">Thực phẩm khô / trứng</option>
-                  <option value="Khác">Khác</option>
+                  {ingredientCategories.map((cat) => (
+                    <option key={cat.id} value={cat.name}>
+                      {cat.name}
+                    </option>
+                  ))}
+                  {newItemCategory && !ingredientCategories.some((c) => c.name === newItemCategory) && (
+                    <option value={newItemCategory}>{newItemCategory}</option>
+                  )}
+                  {ingredientCategories.length === 0 && (
+                    <option value="">Chưa có danh mục</option>
+                  )}
                 </select>
               </div>
 

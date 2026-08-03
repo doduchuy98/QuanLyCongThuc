@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, MoreVertical, Plus, ChefHat, ArrowUpDown, Star, Calendar, Check, Share2, CheckCircle2, ImageOff, Coins } from 'lucide-react';
+import { Search, MoreVertical, Plus, ChefHat, ArrowUpDown, Star, Calendar, Check, Share2, CheckCircle2, ImageOff } from 'lucide-react';
 import { Category, IngredientItem, Recipe } from '../types';
 import { shareRecipeData } from '../utils/shareUtils';
-import { calculateRecipeTotalCost, formatCurrency } from '../utils/costUtils';
 import { matchesSearch } from '../utils/stringUtils';
 import { CuteDeleteModal } from '../components/CuteDeleteModal';
 
@@ -324,19 +323,6 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
                     <span className="text-[11px] font-medium text-slate-400">
                       {recipe.ingredients.length} ng.liệu
                     </span>
-                    {(() => {
-                      const cost = calculateRecipeTotalCost(recipe, allIngredients);
-                      if (cost <= 0) return null;
-                      return (
-                        <>
-                          <span className="text-slate-300">•</span>
-                          <span className="inline-flex items-center gap-0.5 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200/60">
-                            <Coins className="w-2.5 h-2.5 text-emerald-600" />
-                            {formatCurrency(cost)}
-                          </span>
-                        </>
-                      );
-                    })()}
                   </div>
                   {recipe.updatedAt && (
                     <div className="flex items-center gap-1 text-[10px] font-medium text-slate-400 mt-1">

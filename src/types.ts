@@ -30,7 +30,7 @@ export interface Category {
   name: string;
   iconName: string; // lucide icon name
   bgColor: string; // hex or tailwind class
-  recipeCount: number;
+  recipeCount?: number;
   type?: 'recipe' | 'ingredient' | 'unit';
   itemCount?: number;
 }
@@ -72,4 +72,4 @@ export interface ShoppingListItem {
   createdAt: string;
 }
 
-export type ActiveTab = 'home' | 'recipes' | 'ingredients' | 'categories' | 'shopping_list' | 'settings';
+export type ActiveTab = 'home' | 'recipes' | 'categories' | 'browser' | 'settings';

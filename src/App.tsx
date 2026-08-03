@@ -15,7 +15,7 @@ import { IngredientsView } from './views/IngredientsView';
 import { AddIngredientView } from './views/AddIngredientView';
 import { CategoriesView } from './views/CategoriesView';
 import { SettingsView } from './views/SettingsView';
-import { ShoppingListView } from './views/ShoppingListView';
+import { BrowserView } from './views/BrowserView';
 
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { ChangePinModal } from './components/ChangePinModal';
@@ -29,7 +29,7 @@ import {
   syncSaveDoc,
   syncDeleteDoc,
   syncBatchSave,
-} from './services/firestoreSync';
+} from './services/supabaseSync';
 
 export default function App() {
   const { isOffline } = useOffline();
@@ -111,13 +111,26 @@ export default function App() {
   const [isCloudSynced, setIsCloudSynced] = useState<boolean>(true);
 
   useEffect(() => {
-    // 1. Seed initial data if Firestore collections are empty
-    seedCollectionIfEmpty('recipes', INITIAL_RECIPES);
-    seedCollectionIfEmpty('ingredients', INITIAL_INGREDIENTS);
-    seedCollectionIfEmpty('categories', INITIAL_CATEGORIES);
-    seedCollectionIfEmpty('shoppingList', INITIAL_SHOPPING_LIST);
+    // 1. Get saved local data if present
+    const savedRecipesStr = localStorage.getItem('app_recipes');
+    const localRecipes: Recipe[] = savedRecipesStr ? JSON.parse(savedRecipesStr) : INITIAL_RECIPES;
 
-    // 2. Subscribe to real-time updates from Firestore
+    const savedIngsStr = localStorage.getItem('app_ingredients');
+    const localIngs: IngredientItem[] = savedIngsStr ? JSON.parse(savedIngsStr) : INITIAL_INGREDIENTS;
+
+    const savedCatsStr = localStorage.getItem('app_categories');
+    const localCats: Category[] = savedCatsStr ? JSON.parse(savedCatsStr) : INITIAL_CATEGORIES;
+
+    const savedShopStr = localStorage.getItem('app_shopping_list');
+    const localShop: ShoppingListItem[] = savedShopStr ? JSON.parse(savedShopStr) : INITIAL_SHOPPING_LIST;
+
+    // 2. Seed initial data if Firestore collections are empty (preferring user local storage data)
+    seedCollectionIfEmpty('recipes', localRecipes);
+    seedCollectionIfEmpty('ingredients', localIngs);
+    seedCollectionIfEmpty('categories', localCats);
+    seedCollectionIfEmpty('shoppingList', localShop);
+
+    // 3. Subscribe to real-time updates from Firestore
     const unsubRecipes = subscribeCollection<Recipe>(
       'recipes',
       (remoteRecipes) => {
@@ -451,8 +464,8 @@ export default function App() {
       case 'recipes':
         headerTitle = 'Công thức';
         break;
-      case 'shopping_list':
-        headerTitle = 'Đi chợ thông minh';
+      case 'browser':
+        headerTitle = 'Trang duyệt web';
         break;
       case 'ingredients':
         headerTitle = 'Danh sách nguyên liệu';
@@ -543,6 +556,7 @@ export default function App() {
                 categories={categories}
                 availableIngredients={ingredients}
                 onSave={handleSaveRecipe}
+                onSaveIngredient={handleSaveIngredient}
                 onCancel={() => setSubView('none')}
               />
             ) : subView === 'edit_recipe' && selectedRecipe ? (
@@ -551,13 +565,16 @@ export default function App() {
                 categories={categories}
                 availableIngredients={ingredients}
                 onSave={handleSaveRecipe}
+                onSaveIngredient={handleSaveIngredient}
                 onCancel={() => setSubView('recipe_detail')}
               />
             ) : subView === 'add_ingredient' ? (
               <AddIngredientView
                 existingIngredients={ingredients}
                 ingredientCategories={categories.filter((c) => c.type === 'ingredient')}
+                unitCategories={categories.filter((c) => c.type === 'unit')}
                 onSave={handleSaveIngredient}
+                onAddCategory={handleAddCategory}
                 onCancel={() => setSubView('none')}
               />
             ) : subView === 'edit_ingredient' && selectedIngredient ? (
@@ -565,7 +582,9 @@ export default function App() {
                 ingredientToEdit={selectedIngredient}
                 existingIngredients={ingredients}
                 ingredientCategories={categories.filter((c) => c.type === 'ingredient')}
+                unitCategories={categories.filter((c) => c.type === 'unit')}
                 onSave={handleSaveIngredient}
+                onAddCategory={handleAddCategory}
                 onCancel={() => setSubView('none')}
               />
             ) : (
@@ -575,11 +594,9 @@ export default function App() {
                     recipes={recipes}
                     categories={categories}
                     totalIngredientsCount={ingredients.length}
-                    shoppingListUnboughtCount={unboughtCount}
                     onNavigateToRecipes={() => handleTabChange('recipes')}
-                    onNavigateToIngredients={() => handleTabChange('ingredients')}
                     onNavigateToCategories={() => handleTabChange('categories')}
-                    onNavigateToShoppingList={() => handleTabChange('shopping_list')}
+                    onNavigateToBrowser={() => handleTabChange('browser')}
                     onSelectRecipe={handleSelectRecipe}
                   />
                 )}
@@ -600,19 +617,7 @@ export default function App() {
                   />
                 )}
 
-                {activeTab === 'shopping_list' && (
-                  <ShoppingListView
-                    shoppingList={shoppingList}
-                    allIngredients={ingredients}
-                    onToggleItem={handleToggleShoppingItem}
-                    onUpdateAmount={handleUpdateShoppingItemAmount}
-                    onAddItem={handleAddShoppingItem}
-                    onDeleteItem={handleDeleteShoppingItem}
-                    onClearBought={handleClearBoughtShoppingItems}
-                    onClearAll={handleClearAllShoppingItems}
-                    onOpenBatchAddRecipeModal={() => setIsBatchAddShoppingModalOpen(true)}
-                  />
-                )}
+                {activeTab === 'browser' && <BrowserView />}
 
                 {activeTab === 'ingredients' && (
                   <IngredientsView

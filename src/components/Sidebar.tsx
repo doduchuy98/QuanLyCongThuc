@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, ChefHat, Carrot, LayoutGrid, Settings, Plus, Scale, ShieldCheck, Lock, Sparkles, Heart, ShoppingCart } from 'lucide-react';
+import { Home, ChefHat, LayoutGrid, Settings, Plus, Scale, ShieldCheck, Lock, Sparkles, Heart, Globe } from 'lucide-react';
 import { ActiveTab } from '../types';
 
 interface SidebarProps {
@@ -8,7 +8,6 @@ interface SidebarProps {
   recipesCount: number;
   ingredientsCount: number;
   categoriesCount: number;
-  shoppingListUnboughtCount?: number;
   isAdmin?: boolean;
   onOpenAdminLogin?: () => void;
   onLogoutAdmin?: () => void;
@@ -22,7 +21,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   recipesCount,
   ingredientsCount,
   categoriesCount,
-  shoppingListUnboughtCount,
   isAdmin,
   onOpenAdminLogin,
   onLogoutAdmin,
@@ -32,8 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems = [
     { id: 'home' as ActiveTab, label: 'Trang chủ', icon: Home, count: null },
     { id: 'recipes' as ActiveTab, label: 'Công thức', icon: ChefHat, count: recipesCount },
-    { id: 'shopping_list' as ActiveTab, label: 'Đi chợ thông minh', icon: ShoppingCart, count: shoppingListUnboughtCount ?? null },
-    { id: 'ingredients' as ActiveTab, label: 'Nguyên liệu', icon: Carrot, count: ingredientsCount },
+    { id: 'browser' as ActiveTab, label: 'Trang duyệt web', icon: Globe, count: null },
     { id: 'categories' as ActiveTab, label: 'Danh mục', icon: LayoutGrid, count: categoriesCount },
     { id: 'settings' as ActiveTab, label: 'Cài đặt & Dữ liệu', icon: Settings, count: null },
   ];
@@ -52,7 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <Sparkles className="w-3.5 h-3.5 text-pink-400 fill-pink-400 inline" />
             </h1>
             <p className="text-[11px] font-semibold text-slate-400">
-              Công thức & Giá vốn món ăn
+              Công thức & Quản lý món ăn
             </p>
           </div>
         </div>

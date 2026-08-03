@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, ChefHat, Carrot, ShoppingCart, Plus } from 'lucide-react';
+import { Home, ChefHat, LayoutGrid, Globe, Plus } from 'lucide-react';
 import { ActiveTab } from '../types';
 
 interface BottomNavProps {
@@ -8,7 +8,6 @@ interface BottomNavProps {
   onQuickAddClick?: () => void;
   isAdmin?: boolean;
   onOpenAdminLogin?: () => void;
-  shoppingListUnboughtCount?: number;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
@@ -17,7 +16,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   onQuickAddClick,
   isAdmin,
   onOpenAdminLogin,
-  shoppingListUnboughtCount = 0,
 }) => {
   const leftTabs = [
     { id: 'home' as ActiveTab, label: 'Trang chủ', icon: Home },
@@ -25,8 +23,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   ];
 
   const rightTabs = [
-    { id: 'shopping_list' as ActiveTab, label: 'Đi chợ', icon: ShoppingCart, badge: shoppingListUnboughtCount },
-    { id: 'ingredients' as ActiveTab, label: 'Nguyên liệu', icon: Carrot },
+    { id: 'browser' as ActiveTab, label: 'Duyệt web', icon: Globe },
+    { id: 'categories' as ActiveTab, label: 'Danh mục', icon: LayoutGrid },
   ];
 
   return (
@@ -93,7 +91,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           {rightTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
-            const hasBadge = (tab.badge ?? 0) > 0;
             return (
               <button
                 key={tab.id}
@@ -110,11 +107,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                       isActive ? 'scale-110 stroke-[2.5] drop-shadow-[0_2px_6px_rgba(255,71,133,0.3)]' : 'stroke-[1.8]'
                     }`}
                   />
-                  {hasBadge && (
-                    <span className="absolute -top-1.5 -right-2.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full min-w-[16px] text-center border border-white/90 shadow-2xs">
-                      {tab.badge}
-                    </span>
-                  )}
                 </div>
                 <span className="text-[10px] mt-0.5 tracking-tight leading-none">
                   {tab.label}

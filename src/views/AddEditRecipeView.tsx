@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { Upload, Plus, Trash2, Check, Sparkles, Search, Carrot, X, ImageOff, Coins } from 'lucide-react';
+import { Upload, Plus, Trash2, Check, Sparkles, Search, Carrot, X, ImageOff } from 'lucide-react';
 import { Category, IngredientItem, Recipe, RecipeIngredient, CookingStep } from '../types';
-import { calculateRecipeTotalCost, getIngredientCostDetails, formatCurrency } from '../utils/costUtils';
-import { matchesSearch } from '../utils/stringUtils';
+import { matchesSearch, removeVietnameseTones, capitalizeWords } from '../utils/stringUtils';
 import { CuteDeleteModal } from '../components/CuteDeleteModal';
 
 interface AddEditRecipeViewProps {
@@ -10,6 +9,7 @@ interface AddEditRecipeViewProps {
   categories: Category[];
   availableIngredients: IngredientItem[];
   onSave: (recipe: Recipe) => void;
+  onSaveIngredient?: (ingredient: IngredientItem) => void;
   onCancel: () => void;
 }
 
@@ -51,15 +51,22 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
   categories,
   availableIngredients,
   onSave,
+  onSaveIngredient,
   onCancel,
 }) => {
+  const recipeCategories = categories.filter(
+    (c) => c.type === 'recipe' || (!c.type && c.type !== 'ingredient' && c.type !== 'unit')
+  );
+  const unitCategories = categories.filter((c) => c.type === 'unit');
+
   const [title, setTitle] = useState(recipeToEdit?.title || '');
-  const [category, setCategory] = useState(recipeToEdit?.category || categories[0]?.name || 'Món chính');
+  const [category, setCategory] = useState(
+    recipeToEdit?.category || recipeCategories[0]?.name || ''
+  );
   const [description, setDescription] = useState(recipeToEdit?.description || '');
   const [imageUrl, setImageUrl] = useState(recipeToEdit?.imageUrl || '');
   const [isActive, setIsActive] = useState(recipeToEdit?.isActive ?? true);
   const [portionLabel, setPortionLabel] = useState(recipeToEdit?.portionLabel || '1 phần');
-  const [customUnitRows, setCustomUnitRows] = useState<Record<number, boolean>>({});
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'ingredient' | 'step'; index: number; name: string } | null>(null);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,7 +88,7 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
 
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>(
     recipeToEdit?.ingredients || [
-      { ingredientId: availableIngredients[0]?.id || 'ing-1', ingredientName: availableIngredients[0]?.name || 'Thịt bò tái', amount: 100, unit: 'gram' },
+      { ingredientId: availableIngredients[0]?.id || 'ing-1', ingredientName: availableIngredients[0]?.name || 'Thịt bò', amount: 100, unit: 'gram' },
     ]
   );
 
@@ -106,8 +113,9 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
   });
 
   const handleSelectFromPicker = (ingItem: IngredientItem) => {
-    // Check if already in list
-    const exists = ingredients.some((i) => i.ingredientId === ingItem.id);
+    const exists = ingredients.some(
+      (i) => i.ingredientId === ingItem.id || removeVietnameseTones(i.ingredientName) === removeVietnameseTones(ingItem.name)
+    );
     if (exists) {
       alert(`Nguyên liệu "${ingItem.name}" đã có trong danh sách rồi nè!`);
       return;
@@ -127,30 +135,44 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
   };
 
   const handleAddIngredientRow = () => {
-    const firstIng = availableIngredients[0];
     setIngredients([
       ...ingredients,
       {
-        ingredientId: firstIng?.id || `ing-${Date.now()}`,
-        ingredientName: firstIng?.name || 'Nguyên liệu mới',
-        amount: 50,
-        unit: firstIng?.unit || 'gram',
+        ingredientId: '',
+        ingredientName: '',
+        amount: 1,
+        unit: 'gram',
       },
     ]);
   };
 
-  const handleUpdateIngredient = (index: number, field: keyof RecipeIngredient, value: any) => {
+  const handleIngredientNameChange = (index: number, nameValue: string) => {
+    const formattedName = capitalizeWords(nameValue);
     const updated = [...ingredients];
-    if (field === 'ingredientId') {
-      const found = availableIngredients.find((i) => i.id === value);
-      if (found) {
-        updated[index].ingredientId = found.id;
-        updated[index].ingredientName = found.name;
-        updated[index].unit = found.unit;
+    updated[index].ingredientName = formattedName;
+
+    const norm = removeVietnameseTones(formattedName.trim());
+    const matched = norm
+      ? availableIngredients.find(
+          (i) => removeVietnameseTones(i.name.trim()) === norm
+        )
+      : null;
+
+    if (matched) {
+      updated[index].ingredientId = matched.id;
+      if (!updated[index].unit || updated[index].unit === 'gram') {
+        updated[index].unit = matched.unit;
       }
     } else {
-      (updated[index] as any)[field] = value;
+      updated[index].ingredientId = '';
     }
+
+    setIngredients(updated);
+  };
+
+  const handleUpdateIngredient = (index: number, field: keyof RecipeIngredient, value: any) => {
+    const updated = [...ingredients];
+    (updated[index] as any)[field] = field === 'ingredientName' ? capitalizeWords(value) : value;
     setIngredients(updated);
   };
 
@@ -189,6 +211,51 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
       return;
     }
 
+    const processedIngredients: RecipeIngredient[] = [];
+
+    for (const ing of ingredients) {
+      const trimmedName = ing.ingredientName.trim();
+      if (!trimmedName) continue;
+
+      const normName = removeVietnameseTones(trimmedName);
+      const existingMaster = availableIngredients.find(
+        (i) => removeVietnameseTones(i.name.trim()) === normName
+      );
+
+      let finalIngId = ing.ingredientId;
+
+      if (existingMaster) {
+        finalIngId = existingMaster.id;
+      } else {
+        // Auto add new ingredient to master ingredient list
+        const newMasterIng: IngredientItem = {
+          id: `ing-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+          name: trimmedName,
+          unit: ing.unit.trim() || 'gram',
+          category: 'Khác',
+          isActive: true,
+        };
+
+        if (onSaveIngredient) {
+          onSaveIngredient(newMasterIng);
+        }
+        finalIngId = newMasterIng.id;
+      }
+
+      processedIngredients.push({
+        ingredientId: finalIngId,
+        ingredientName: trimmedName,
+        amount: Number(ing.amount) || 1,
+        unit: ing.unit.trim() || 'gram',
+        note: ing.note,
+      });
+    }
+
+    if (processedIngredients.length === 0) {
+      alert('Vui lòng nhập ít nhất 1 nguyên liệu cho món ăn!');
+      return;
+    }
+
     const now = new Date();
     const day = String(now.getDate()).padStart(2, '0');
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -206,7 +273,7 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
       isActive,
       updatedAt: formattedDate,
       portionLabel,
-      ingredients,
+      ingredients: processedIngredients,
       steps,
       prepTimeMinutes: recipeToEdit?.prepTimeMinutes || 20,
       cookTimeMinutes: recipeToEdit?.cookTimeMinutes || 30,
@@ -257,7 +324,7 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
           )}
         </div>
 
-        {/* URL input and preset image options */}
+        {/* URL input */}
         <div className="mt-2 space-y-2">
           <div className="flex items-center gap-2">
             <input
@@ -267,22 +334,6 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
               onChange={(e) => setImageUrl(e.target.value)}
               className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8]"
             />
-          </div>
-
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-1">
-            <span className="text-[11px] font-bold text-slate-400 flex-shrink-0">Ảnh mẫu:</span>
-            {PRESET_DISH_IMAGES.map((img, idx) => (
-              <button
-                type="button"
-                key={idx}
-                onClick={() => setImageUrl(img)}
-                className={`w-9 h-9 rounded-lg flex-shrink-0 overflow-hidden border-2 transition-all ${
-                  imageUrl === img ? 'border-[#FF8FB8] scale-105 shadow-xs' : 'border-transparent opacity-60 hover:opacity-100'
-                }`}
-              >
-                <img src={img} alt="Preset" className="w-full h-full object-cover" />
-              </button>
-            ))}
           </div>
         </div>
       </div>
@@ -312,11 +363,17 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
             onChange={(e) => setCategory(e.target.value)}
             className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8] focus:bg-white"
           >
-            {categories.filter(c => c.type !== 'ingredient').map((c) => (
+            {recipeCategories.map((c) => (
               <option key={c.id} value={c.name}>
                 {c.name}
               </option>
             ))}
+            {category && !recipeCategories.some((c) => c.name === category) && (
+              <option value={category}>{category}</option>
+            )}
+            {recipeCategories.length === 0 && (
+              <option value="">Chưa có danh mục món ăn</option>
+            )}
           </select>
         </div>
 
@@ -366,14 +423,6 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setIsPickerOpen(true)}
-              className="px-2.5 py-1 rounded-xl bg-pink-50 border border-pink-200 text-xs font-bold text-[#FF8FB8] hover:bg-pink-100 transition-colors flex items-center gap-1"
-            >
-              <Carrot className="w-3.5 h-3.5" />
-              <span>Chọn từ danh sách</span>
-            </button>
-            <button
-              type="button"
               onClick={handleAddIngredientRow}
               className="text-xs font-bold text-[#FF8FB8] hover:underline"
             >
@@ -384,30 +433,34 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
 
         <div className="space-y-3">
           {ingredients.map((ing, idx) => {
-            const costDetails = getIngredientCostDetails(ing, availableIngredients);
-            const masterItem = availableIngredients.find((i) => i.id === ing.ingredientId || i.name === ing.ingredientName);
-            const masterUnit = masterItem?.unit || 'gram';
-
             return (
               <div
                 key={idx}
-                className="p-2.5 bg-slate-50/90 rounded-2xl border border-slate-200 space-y-1.5 shadow-2xs"
+                className="p-3 bg-slate-50/90 rounded-2xl border border-slate-200 space-y-2 shadow-2xs"
               >
-                {/* Main Inputs Row - Compact Single Line */}
+                {/* Main Inputs Row - Name, Amount, Unit */}
                 <div className="flex items-center gap-1.5">
-                  <select
-                    value={ing.ingredientId}
-                    onChange={(e) => handleUpdateIngredient(idx, 'ingredientId', e.target.value)}
-                    className="flex-1 min-w-0 bg-white border border-slate-200 rounded-xl px-2 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8] truncate"
-                  >
-                    {availableIngredients.map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.name} ({i.unit})
-                      </option>
-                    ))}
-                  </select>
+                  {/* Ingredient Name Input with Auto-complete Datalist */}
+                  <div className="flex-1 min-w-0 relative">
+                    <input
+                      type="text"
+                      list={`available-ingredients-list-${idx}`}
+                      placeholder="Tên nguyên liệu..."
+                      value={ing.ingredientName}
+                      onChange={(e) => handleIngredientNameChange(idx, e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8]"
+                    />
+                    <datalist id={`available-ingredients-list-${idx}`}>
+                      {availableIngredients.map((i) => (
+                        <option key={i.id} value={i.name}>
+                          {i.category ? `${i.category} • ` : ''}Đơn vị: {i.unit}
+                        </option>
+                      ))}
+                    </datalist>
+                  </div>
 
-                  <div className="w-14 flex-shrink-0">
+                  {/* Quantity Input */}
+                  <div className="w-16 flex-shrink-0">
                     <input
                       type="number"
                       min="0.01"
@@ -415,59 +468,28 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
                       placeholder="SL"
                       value={ing.amount === 0 ? '' : ing.amount}
                       onChange={(e) => handleUpdateIngredient(idx, 'amount', e.target.value === '' ? 0 : Number(e.target.value))}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-1 py-1.5 text-xs font-bold text-slate-800 text-center focus:outline-none focus:ring-2 focus:ring-[#FF8FB8]"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-1.5 py-1.5 text-xs font-bold text-slate-800 text-center focus:outline-none focus:ring-2 focus:ring-[#FF8FB8]"
                     />
                   </div>
 
-                  {/* Compact Unit Selector */}
-                  <div className="w-22 flex-shrink-0 relative">
-                    {customUnitRows[idx] ? (
-                      <div className="flex items-center gap-0.5">
-                        <input
-                          type="text"
-                          placeholder="Đơn vị..."
-                          value={ing.unit}
-                          onChange={(e) => handleUpdateIngredient(idx, 'unit', e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-1 py-1 text-[11px] font-bold text-slate-800 text-center focus:outline-none focus:ring-2 focus:ring-[#FF8FB8]"
-                          autoFocus
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setCustomUnitRows((prev) => ({ ...prev, [idx]: false }))}
-                          className="text-[10px] font-bold text-slate-400 hover:text-slate-600 px-0.5"
-                          title="Chọn từ danh sách"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <select
-                        value={ing.unit}
-                        onChange={(e) => {
-                          if (e.target.value === '__custom__') {
-                            setCustomUnitRows((prev) => ({ ...prev, [idx]: true }));
-                          } else {
-                            handleUpdateIngredient(idx, 'unit', e.target.value);
-                          }
-                        }}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-1.5 py-1.5 text-[11px] font-bold text-slate-800 text-center focus:outline-none focus:ring-2 focus:ring-[#FF8FB8] truncate"
-                      >
-                        {(() => {
-                          const optionsSet = new Set<string>(COMMON_UNITS);
-                          if (masterUnit) optionsSet.add(masterUnit);
-                          if (ing.unit) optionsSet.add(ing.unit);
-
-                          return Array.from(optionsSet).map((u) => (
-                            <option key={u} value={u}>
-                              {u} {u === masterUnit ? '(gốc)' : ''}
-                            </option>
-                          ));
-                        })()}
-                        <option value="__custom__">✍️ Tự nhập...</option>
-                      </select>
-                    )}
+                  {/* Unit Input */}
+                  <div className="w-24 flex-shrink-0 relative">
+                    <input
+                      type="text"
+                      list={`common-units-list-${idx}`}
+                      placeholder="Đơn vị..."
+                      value={ing.unit}
+                      onChange={(e) => handleUpdateIngredient(idx, 'unit', e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-2 py-1.5 text-xs font-bold text-slate-800 text-center focus:outline-none focus:ring-2 focus:ring-[#FF8FB8]"
+                    />
+                    <datalist id={`common-units-list-${idx}`}>
+                      {Array.from(new Set([...unitCategories.map((u) => u.name), ...COMMON_UNITS])).map((u) => (
+                        <option key={u} value={u} />
+                      ))}
+                    </datalist>
                   </div>
 
+                  {/* Delete Row Button */}
                   <button
                     type="button"
                     onClick={() => setDeleteTarget({ type: 'ingredient', index: idx, name: ing.ingredientName || 'nguyên liệu này' })}
@@ -477,70 +499,10 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
-
-                {/* Note / Prep instructions row */}
-                <div className="flex items-center gap-1.5 pt-0.5">
-                  <span className="text-[10.5px] font-bold text-slate-400 flex-shrink-0">Ghi chú:</span>
-                  <input
-                    type="text"
-                    placeholder="Ghi chú sơ chế (vd: bằm nhỏ, xắt mỏng, bỏ hạt...)"
-                    value={ing.note || ''}
-                    onChange={(e) => handleUpdateIngredient(idx, 'note', e.target.value)}
-                    className="w-full bg-white border border-slate-200/90 rounded-xl px-2 py-1 text-[11px] font-semibold text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-[#FF8FB8]"
-                  />
-                </div>
-
-                {/* Calculated Cost & Unit conversion details Footer */}
-                <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200/60 px-0.5">
-                  <div className="flex items-center gap-1.5 text-[10.5px]">
-                    {costDetails.isConverted ? (
-                      <span className="bg-sky-100 text-sky-800 font-bold px-1.5 py-0.5 rounded-md text-[10px] border border-sky-300/70 flex items-center gap-1">
-                        <span>⚡ Quy đổi:</span>
-                        <span>{ing.amount} {ing.unit} = {costDetails.convertedAmount} {costDetails.masterUnit}</span>
-                      </span>
-                    ) : (
-                      <span className="text-slate-400">
-                        Giá gốc: {costDetails.masterPrice.toLocaleString('vi-VN')}đ/{costDetails.masterUnit}
-                      </span>
-                    )}
-                  </div>
-
-                  <span className="font-black text-emerald-600 text-[11px] bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200/60 ml-auto">
-                    = {formatCurrency(costDetails.cost)}
-                  </span>
-                </div>
               </div>
             );
           })}
         </div>
-
-        {/* Live Total Cost Calculation Banner */}
-        {(() => {
-          const tempRecipe: Recipe = {
-            id: 'temp',
-            title: '',
-            category: '',
-            imageUrl: '',
-            description: '',
-            isActive: true,
-            updatedAt: '',
-            portionLabel: portionLabel || '1 phần',
-            ingredients,
-            steps: [],
-          };
-          const estimatedCost = calculateRecipeTotalCost(tempRecipe, availableIngredients);
-          return (
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-slate-700">
-              <span className="flex items-center gap-1.5 text-slate-500">
-                <Coins className="w-4 h-4 text-emerald-600" />
-                <span>Ước tính giá vốn nguyên liệu:</span>
-              </span>
-              <span className="text-sm font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200/60">
-                {formatCurrency(estimatedCost)}
-              </span>
-            </div>
-          );
-        })()}
       </div>
 
       {/* Cooking Steps Section */}

@@ -1,3 +1,8 @@
+export function capitalizeWords(str: string): string {
+  if (!str) return '';
+  return str.replace(/(?:^|[\s\-(_])\S/g, (char) => char.toUpperCase());
+}
+
 /**
  * Removes Vietnamese tones and diacritics for flexible fuzzy searching.
  * e.g., "Thịt ba rọi" -> "thit ba roi"

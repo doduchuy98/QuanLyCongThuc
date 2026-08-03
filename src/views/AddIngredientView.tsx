@@ -1,61 +1,36 @@
 import React, { useState } from 'react';
-import { Upload, Check, Carrot, Sparkles, Search, Layers, AlertTriangle, AlertCircle, ImageOff, X, Image as ImageIcon } from 'lucide-react';
+import { Check, AlertTriangle } from 'lucide-react';
 import { IngredientItem, Category } from '../types';
-import { PRESET_INGREDIENTS_LIBRARY, PresetIngredient } from '../data/presetIngredients';
-import { matchesSearch, removeVietnameseTones } from '../utils/stringUtils';
+import { removeVietnameseTones, capitalizeWords } from '../utils/stringUtils';
 
 interface AddIngredientViewProps {
   ingredientToEdit?: IngredientItem | null;
   ingredientCategories?: Category[];
+  unitCategories?: Category[];
   existingIngredients?: IngredientItem[];
   onSave: (ingredient: IngredientItem) => void;
+  onAddCategory?: (category: Category) => void;
   onCancel: () => void;
 }
-
-const PRESET_INGREDIENT_IMAGES = [
-  'https://images.unsplash.com/photo-1588168333986-5078d3ae3976?w=200&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1617093727343-374698b1b08d?w=200&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1618512496248-a07fe83aa8cf?w=200&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=200&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1608797178974-15b35a64ede9?w=200&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=200&auto=format&fit=crop&q=80',
-];
 
 export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
   ingredientToEdit,
   ingredientCategories = [],
+  unitCategories = [],
   existingIngredients = [],
   onSave,
+  onAddCategory,
   onCancel,
 }) => {
   const [name, setName] = useState(ingredientToEdit?.name || '');
-  const [unit, setUnit] = useState(ingredientToEdit?.unit || 'gram');
-  const [category, setCategory] = useState(ingredientToEdit?.category || 'Thịt tươi');
+  const [unit, setUnit] = useState(ingredientToEdit?.unit || '');
+  const [category, setCategory] = useState(
+    ingredientToEdit?.category || (ingredientCategories.length > 0 ? ingredientCategories[0].name : '')
+  );
   const [pricePerUnit, setPricePerUnit] = useState<number | ''>(ingredientToEdit?.pricePerUnit ?? '');
   const [note, setNote] = useState(ingredientToEdit?.note || '');
   const [imageUrl, setImageUrl] = useState(ingredientToEdit?.imageUrl || '');
   const [isActive, setIsActive] = useState(ingredientToEdit?.isActive ?? true);
-  const [isCustomUnit, setIsCustomUnit] = useState(false);
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          setImageUrl(reader.result);
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Preset library filter state
-  const [libraryFilterCategory, setLibraryFilterCategory] = useState<string>('Tất cả');
-  const [librarySearch, setLibrarySearch] = useState<string>('');
-  const [autoFilledNotice, setAutoFilledNotice] = useState<string | null>(null);
-
-  const libraryCategories = ['Tất cả', 'Thịt tươi', 'Rau củ & Rau thơm', 'Tinh bột', 'Gia vị', 'Đồ uống & Sữa'];
 
   // Check duplicate ingredient name (accent & tone insensitive)
   const normalizedName = removeVietnameseTones(name.trim());
@@ -65,33 +40,6 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
       )
     : null;
 
-  const filteredPresetIngredients = PRESET_INGREDIENTS_LIBRARY.filter((item) => {
-    const matchesCat = libraryFilterCategory === 'Tất cả' || item.category === libraryFilterCategory;
-    const matchesSearchQuery = matchesSearch(item.name, librarySearch);
-    return matchesCat && matchesSearchQuery;
-  });
-
-  const handleSelectPreset = (preset: PresetIngredient) => {
-    setName(preset.name);
-    setUnit(preset.unit);
-    setCategory(preset.category);
-    setImageUrl(preset.imageUrl);
-    if (preset.pricePerUnit !== undefined) setPricePerUnit(preset.pricePerUnit);
-    if (preset.note) setNote(preset.note);
-
-    const isDup = existingIngredients.some(
-      (i) => i.id !== ingredientToEdit?.id && removeVietnameseTones(i.name.trim()) === removeVietnameseTones(preset.name.trim())
-    );
-
-    if (isDup) {
-      setAutoFilledNotice(`⚠️ Nguyên liệu "${preset.name}" đã có trong danh sách nguyên liệu của bạn!`);
-    } else {
-      const priceText = preset.pricePerUnit ? ` • Giá: ${preset.pricePerUnit.toLocaleString('vi-VN')}đ/${preset.unit}` : '';
-      setAutoFilledNotice(`Đã chọn tự động: "${preset.name}" (${preset.unit})${priceText} ✨`);
-    }
-    setTimeout(() => setAutoFilledNotice(null), 3500);
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = name.trim();
@@ -100,16 +48,32 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
       return;
     }
 
+    if (!unit.trim()) {
+      alert('Vui lòng nhập đơn vị tính!');
+      return;
+    }
+
     if (duplicateMatch) {
       alert(`⚠️ Nguyên liệu "${duplicateMatch.name}" đã tồn tại trong danh sách! (Đơn vị: ${duplicateMatch.unit}, Danh mục: ${duplicateMatch.category}). Vui lòng chọn tên khác.`);
       return;
     }
 
+    const cleanUnit = unit.trim();
+    if (cleanUnit && onAddCategory && !unitCategories.some((u) => u.name.toLowerCase() === cleanUnit.toLowerCase())) {
+      onAddCategory({
+        id: `ucat-${Date.now()}`,
+        name: cleanUnit,
+        type: 'unit',
+        iconName: 'Ruler',
+        bgColor: '#AEE9FF',
+      });
+    }
+
     const item: IngredientItem = {
       id: ingredientToEdit?.id || `ing-${Date.now()}`,
       name: trimmedName,
-      unit,
-      category,
+      unit: cleanUnit,
+      category: category || (ingredientCategories[0]?.name || ''),
       pricePerUnit: pricePerUnit === '' ? undefined : Number(pricePerUnit),
       note,
       imageUrl,
@@ -121,101 +85,6 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="p-4 space-y-5 pb-28 animate-fade-in">
-      {/* Toast Notice */}
-      {autoFilledNotice && (
-        <div className="p-3 bg-pink-500 text-white font-bold text-xs rounded-2xl shadow-md flex items-center justify-between animate-fade-in">
-          <span>{autoFilledNotice}</span>
-          <button type="button" onClick={() => setAutoFilledNotice(null)} className="text-pink-100 font-black">
-            ✕
-          </button>
-        </div>
-      )}
-
-      {/* SECTION 1: QUICK SELECT PRESET INGREDIENT LIST (GỢI Ý DANH SÁCH NGUYÊN LIỆU) */}
-      <div className="bg-gradient-to-br from-pink-50/80 via-white to-amber-50/60 p-4 rounded-3xl border border-pink-100 shadow-2xs space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-amber-400 text-white flex items-center justify-center shadow-xs">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-xs font-bold text-slate-800">Danh sách nguyên liệu để chọn nhanh</h3>
-              <p className="text-[11px] text-slate-500">Chạm vào nguyên liệu bên dưới để tự động điền</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Search inside preset library */}
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Tìm nguyên liệu mẫu..."
-            value={librarySearch}
-            onChange={(e) => setLibrarySearch(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8]"
-          />
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-        </div>
-
-        {/* Category Pills */}
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
-          {libraryCategories.map((cat) => (
-            <button
-              type="button"
-              key={cat}
-              onClick={() => setLibraryFilterCategory(cat)}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all ${
-                libraryFilterCategory === cat
-                  ? 'bg-[#FF8FB8] text-white shadow-xs'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-pink-50'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Grid of Preset Ingredients */}
-        <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto no-scrollbar pr-1 pt-1">
-          {filteredPresetIngredients.map((item, idx) => {
-            const isAlreadyAdded = existingIngredients.some(
-              (ex) => ex.id !== ingredientToEdit?.id && removeVietnameseTones(ex.name.trim()) === removeVietnameseTones(item.name.trim())
-            );
-
-            return (
-              <div
-                key={idx}
-                onClick={() => handleSelectPreset(item)}
-                className={`flex items-center gap-2 p-2 rounded-2xl bg-white border shadow-2xs hover:border-[#FF8FB8] hover:shadow-xs cursor-pointer transition-all active:scale-95 group relative overflow-hidden ${
-                  isAlreadyAdded ? 'border-amber-200 bg-amber-50/20' : 'border-pink-100'
-                }`}
-              >
-                <img
-                  src={item.imageUrl}
-                  alt={item.name}
-                  className="w-10 h-10 rounded-xl object-cover border border-slate-100 flex-shrink-0"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1 justify-between">
-                    <h4 className="text-xs font-bold text-slate-800 truncate group-hover:text-[#FF8FB8] transition-colors">
-                      {item.name}
-                    </h4>
-                  </div>
-                  <div className="flex items-center justify-between gap-1 mt-0.5">
-                    <p className="text-[10px] text-slate-400 font-medium truncate">{item.unit}</p>
-                    {isAlreadyAdded && (
-                      <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-full font-black flex-shrink-0">
-                        Đã có
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Duplicate Ingredient Warning Card */}
       {duplicateMatch && (
         <div className="p-4 bg-rose-50/90 border-2 border-rose-300 rounded-3xl flex items-start gap-3 text-rose-900 shadow-sm animate-fade-in">
@@ -235,7 +104,9 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
               Nguyên liệu <span className="font-black underline text-rose-950">"{duplicateMatch.name}"</span> đã có sẵn trong hệ thống danh mục.
             </p>
             <div className="mt-2 p-2 bg-white/80 rounded-xl border border-rose-200 flex items-center justify-between text-[11px] font-bold">
-              <span className="text-slate-700">Đơn vị: <span className="text-rose-950 font-extrabold">{duplicateMatch.unit}</span> • Loại: <span className="text-rose-950 font-extrabold">{duplicateMatch.category}</span></span>
+              <span className="text-slate-700">
+                Đơn vị: <span className="text-rose-950 font-extrabold">{duplicateMatch.unit}</span> • Loại: <span className="text-rose-950 font-extrabold">{duplicateMatch.category}</span>
+              </span>
               {duplicateMatch.pricePerUnit ? (
                 <span className="text-emerald-700 font-extrabold">{duplicateMatch.pricePerUnit.toLocaleString('vi-VN')}đ/{duplicateMatch.unit}</span>
               ) : (
@@ -249,92 +120,6 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
         </div>
       )}
 
-      {/* Upload Image Box */}
-      <div>
-        <div className="flex items-center justify-between mb-1.5">
-          <label className="block text-xs font-bold text-slate-700">
-            Ảnh nguyên liệu
-          </label>
-          {imageUrl ? (
-            <button
-              type="button"
-              onClick={() => setImageUrl('')}
-              className="text-xs font-bold text-rose-500 hover:underline flex items-center gap-1"
-            >
-              <X className="w-3.5 h-3.5" />
-              <span>Xóa ảnh (Hiện No Image)</span>
-            </button>
-          ) : (
-            <span className="text-[11px] text-slate-400 font-medium">Đang ở chế độ: No Image</span>
-          )}
-        </div>
-
-        <div className="relative w-full h-36 rounded-3xl border-2 border-dashed border-pink-200 bg-pink-50/40 overflow-hidden flex flex-col items-center justify-center p-3 text-center group hover:bg-pink-50 transition-colors">
-          {imageUrl ? (
-            <div className="relative w-full h-full flex items-center justify-center">
-              <img
-                src={imageUrl}
-                alt="Preview"
-                className="w-24 h-24 object-cover rounded-2xl shadow-sm border border-slate-200"
-                onError={() => setImageUrl('')}
-              />
-              <label className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer rounded-2xl">
-                <Upload className="w-6 h-6 mb-1" />
-                <span className="text-xs font-bold">Tải ảnh mới</span>
-                <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-              </label>
-            </div>
-          ) : (
-            <label className="flex flex-col items-center justify-center text-slate-400 cursor-pointer w-full h-full p-2">
-              <div className="w-10 h-10 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 mb-1.5 group-hover:scale-110 transition-transform">
-                <ImageOff className="w-5 h-5 text-slate-400" />
-              </div>
-              <span className="font-extrabold text-xs text-slate-700">Chưa có ảnh (No Image)</span>
-              <span className="text-[11px] text-pink-600 font-bold mt-0.5 underline">Chạm vào đây để tải ảnh từ máy tính/điện thoại 📷</span>
-              <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-            </label>
-          )}
-        </div>
-
-        {/* URL Input & Quick Presets */}
-        <div className="mt-2.5 space-y-2">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Hoặc dán URL ảnh nguyên liệu từ internet..."
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8]"
-            />
-            {imageUrl && (
-              <button
-                type="button"
-                onClick={() => setImageUrl('')}
-                className="absolute right-2.5 top-2 text-xs font-extrabold text-slate-400 hover:text-slate-600"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5">
-            <span className="text-[10.5px] font-bold text-slate-400 flex-shrink-0">Ảnh mẫu:</span>
-            {PRESET_INGREDIENT_IMAGES.map((img, idx) => (
-              <button
-                type="button"
-                key={idx}
-                onClick={() => setImageUrl(img)}
-                className={`w-9 h-9 rounded-xl flex-shrink-0 overflow-hidden border-2 transition-all ${
-                  imageUrl === img ? 'border-[#FF8FB8] scale-105 shadow-xs' : 'border-transparent opacity-60 hover:opacity-100'
-                }`}
-              >
-                <img src={img} alt="Preset" className="w-full h-full object-cover" />
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* Form Fields */}
       <div className="space-y-3.5 bg-white p-4 rounded-3xl border border-slate-100 shadow-2xs">
         <div>
@@ -346,7 +131,7 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
             required
             placeholder="Nhập tên nguyên liệu..."
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => setName(capitalizeWords(e.target.value))}
             className={`w-full bg-slate-50 border rounded-2xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:bg-white transition-all ${
               duplicateMatch
                 ? 'border-rose-400 ring-2 ring-rose-200 bg-rose-50/20'
@@ -366,64 +151,20 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
             <label className="block text-xs font-bold text-slate-700 mb-1">
               Đơn vị tính <span className="text-rose-500">*</span>
             </label>
-            {isCustomUnit ? (
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="text"
-                  required
-                  placeholder="Nhập đơn vị mới..."
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8] focus:bg-white"
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  onClick={() => setIsCustomUnit(false)}
-                  className="px-2.5 py-2.5 text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-2xl transition-colors"
-                  title="Chọn từ danh sách"
-                >
-                  Danh sách
-                </button>
-              </div>
-            ) : (
-              <select
-                value={unit}
-                onChange={(e) => {
-                  if (e.target.value === '__custom__') {
-                    setIsCustomUnit(true);
-                  } else {
-                    setUnit(e.target.value);
-                  }
-                }}
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8] focus:bg-white"
-              >
-                <option value="gram">gram (g)</option>
-                <option value="kg">kilogram (kg)</option>
-                <option value="ml">milliliter (ml)</option>
-                <option value="lít">lít (l)</option>
-                <option value="muỗng cà phê">muỗng cà phê (tsp)</option>
-                <option value="muỗng canh">muỗng canh (tbsp)</option>
-                <option value="quả">quả / trái</option>
-                <option value="củ">củ</option>
-                <option value="tép">tép</option>
-                <option value="ổ">ổ</option>
-                <option value="bát">bát / chén</option>
-                <option value="lát">lát</option>
-                <option value="miếng">miếng</option>
-                <option value="gói">gói</option>
-                <option value="hộp">hộp</option>
-                <option value="chai">chai</option>
-                <option value="lon">lon</option>
-                <option value="bó">bó</option>
-                <option value="nguyên con">nguyên con</option>
-                <option value="cái">cái</option>
-                {unit && !['gram', 'kg', 'ml', 'lít', 'muỗng cà phê', 'muỗng canh', 'quả', 'củ', 'tép', 'ổ', 'bát', 'lát', 'miếng', 'gói', 'hộp', 'chai', 'lon', 'bó', 'nguyên con', 'cái'].includes(unit) && (
-                  <option value={unit}>{unit}</option>
-                )}
-                <option value="__custom__">✍️ Tự nhập đơn vị khác...</option>
-              </select>
-            )}
+            <input
+              type="text"
+              required
+              list="ingredient-units-datalist"
+              placeholder="Nhập đơn vị (VD: g, kg, ml, cái...)"
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8] focus:bg-white"
+            />
+            <datalist id="ingredient-units-datalist">
+              {unitCategories.map((u) => (
+                <option key={u.id} value={u.name} />
+              ))}
+            </datalist>
           </div>
 
           <div>
@@ -435,12 +176,17 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
               onChange={(e) => setCategory(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8] focus:bg-white"
             >
-              <option value="Thịt tươi">Thịt tươi</option>
-              <option value="Rau củ & Rau thơm">Rau củ & Rau thơm</option>
-              <option value="Tinh bột">Tinh bột</option>
-              <option value="Gia vị">Gia vị</option>
-              <option value="Đồ uống & Sữa">Đồ uống & Sữa</option>
-              <option value="Khác">Khác</option>
+              {ingredientCategories.map((cat) => (
+                <option key={cat.id} value={cat.name}>
+                  {cat.name}
+                </option>
+              ))}
+              {category && !ingredientCategories.some((c) => c.name === category) && (
+                <option value={category}>{category}</option>
+              )}
+              {ingredientCategories.length === 0 && (
+                <option value="">Chưa có danh mục</option>
+              )}
             </select>
           </div>
         </div>
@@ -484,22 +230,6 @@ export const AddIngredientView: React.FC<AddIngredientViewProps> = ({
             <p className="text-[10.5px] text-slate-500 leading-relaxed">
               Nếu bạn mua <span className="font-bold text-slate-700">1kg (1.000g)</span> giá <span className="font-bold text-slate-700">260.000đ</span> &rarr; nhập đơn giá là <span className="font-bold text-emerald-600">260</span> (260.000 / 1.000).
             </p>
-            <div className="flex gap-1.5 pt-1">
-              <button
-                type="button"
-                onClick={() => setPricePerUnit(260)}
-                className="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-[10px] hover:bg-emerald-200 transition-colors"
-              >
-                Gợi ý 260.000đ/kg &rarr; 260đ/g
-              </button>
-              <button
-                type="button"
-                onClick={() => setPricePerUnit(140)}
-                className="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-[10px] hover:bg-emerald-200 transition-colors"
-              >
-                Gợi ý 140.000đ/kg &rarr; 140đ/g
-              </button>
-            </div>
           </div>
         </div>
 

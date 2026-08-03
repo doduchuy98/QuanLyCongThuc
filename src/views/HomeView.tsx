@@ -1,28 +1,23 @@
 import React from 'react';
-import { Utensils, Carrot, LayoutGrid, RefreshCw, ChevronRight, ShoppingCart, BookOpen, Sparkles, ImageOff, MoreVertical } from 'lucide-react';
+import { Utensils, LayoutGrid, RefreshCw, ChevronRight, Globe, ImageOff, MoreVertical } from 'lucide-react';
 import { Category, Recipe } from '../types';
 
 interface HomeViewProps {
   recipes: Recipe[];
   categories: Category[];
-  totalIngredientsCount: number;
-  shoppingListUnboughtCount?: number;
+  totalIngredientsCount?: number;
   onNavigateToRecipes: () => void;
-  onNavigateToIngredients: () => void;
   onNavigateToCategories: () => void;
-  onNavigateToShoppingList?: () => void;
+  onNavigateToBrowser?: () => void;
   onSelectRecipe: (recipeId: string) => void;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
   recipes,
   categories,
-  totalIngredientsCount,
-  shoppingListUnboughtCount = 0,
   onNavigateToRecipes,
-  onNavigateToIngredients,
   onNavigateToCategories,
-  onNavigateToShoppingList,
+  onNavigateToBrowser,
   onSelectRecipe,
 }) => {
   const totalRecipes = recipes.length;
@@ -41,7 +36,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             Quản lý công thức món ăn & sốt
           </h2>
           <p className="text-xs md:text-sm font-semibold text-slate-600 mt-1">
-            Hiệu quả – Chính xác – Chuẩn định lượng & giá vốn
+            Hiệu quả – Chính xác – Chuẩn định lượng & quy trình
           </p>
         </div>
 
@@ -55,44 +50,37 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </div>
 
-      {/* Smart Shopping List Featured Card Banner (Ultra Minimal & Compact) */}
-      {onNavigateToShoppingList && (
+      {/* Web Browser Featured Card Banner */}
+      {onNavigateToBrowser && (
         <button
-          onClick={onNavigateToShoppingList}
+          onClick={onNavigateToBrowser}
           className="w-full px-3.5 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-[#FF8FB8] text-white shadow-sm shadow-pink-200 flex items-center justify-between text-left hover:opacity-95 transition-all group"
         >
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white flex-shrink-0 border border-white/25">
-              <ShoppingCart className="w-4.5 h-4.5 stroke-[2.2]" />
+              <Globe className="w-4.5 h-4.5 stroke-[2.2]" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <h3 className="font-extrabold text-sm tracking-tight text-white truncate">
-                  Đi Chợ Thông Minh 🛒
+                  Trang Duyệt Web Bếp 🌐
                 </h3>
-                {shoppingListUnboughtCount > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-white text-pink-600 text-[10px] font-black shadow-2xs flex-shrink-0">
-                    {shoppingListUnboughtCount} món
-                  </span>
-                )}
               </div>
               <p className="text-[11px] text-pink-100 font-medium truncate mt-0.5">
-                {shoppingListUnboughtCount > 0
-                  ? `Đang có ${shoppingListUnboughtCount} món cần mua sắm`
-                  : 'Tự động gom nguyên liệu & quản lý đi chợ'}
+                Tra cứu công thức, Cookpad, Món Ngon Mỗi Ngày & tìm kiếm món ăn
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-1 text-xs font-bold bg-white/20 px-2.5 py-1.5 rounded-xl backdrop-blur-md group-hover:bg-white/30 transition-all flex-shrink-0 ml-2">
-            <span className="hidden sm:inline">Xem</span>
+            <span className="hidden sm:inline">Khám phá</span>
             <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </button>
       )}
 
-      {/* 4 Stats Cards Grid (Ultra Minimal & Compact) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5">
+      {/* 3 Stats Cards Grid */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
         {/* Card 1: Công thức */}
         <button
           onClick={onNavigateToRecipes}
@@ -110,24 +98,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <ChevronRight className="w-4 h-4 text-emerald-600/60 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
         </button>
 
-        {/* Card 2: Nguyên liệu */}
-        <button
-          onClick={onNavigateToIngredients}
-          className="flex items-center justify-between p-2.5 sm:p-3 rounded-2xl bg-[#FFECA8]/35 border border-amber-200/60 text-left hover:bg-[#FFECA8]/60 transition-all group"
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center flex-shrink-0">
-              <Carrot className="w-4 h-4 stroke-[2.2]" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[11px] font-semibold text-slate-500 block truncate">Nguyên liệu</span>
-              <span className="text-base font-black text-amber-900 leading-none">{totalIngredientsCount}</span>
-            </div>
-          </div>
-          <ChevronRight className="w-4 h-4 text-amber-600/60 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
-        </button>
-
-        {/* Card 3: Danh mục */}
+        {/* Card 2: Danh mục */}
         <button
           onClick={onNavigateToCategories}
           className="flex items-center justify-between p-2.5 sm:p-3 rounded-2xl bg-[#AEE9FF]/35 border border-sky-200/60 text-left hover:bg-[#AEE9FF]/60 transition-all group"
@@ -144,7 +115,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <ChevronRight className="w-4 h-4 text-sky-600/60 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
         </button>
 
-        {/* Card 4: Hoạt động */}
+        {/* Card 3: Hoạt động */}
         <button
           onClick={onNavigateToRecipes}
           className="flex items-center justify-between p-2.5 sm:p-3 rounded-2xl bg-[#FFD9E8]/45 border border-pink-200 text-left hover:bg-[#FFD9E8]/70 transition-all group"

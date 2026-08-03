@@ -56,6 +56,10 @@ export const IngredientsView: React.FC<IngredientsViewProps> = ({
     ...Array.from(new Set([...ingredientCatNamesFromObj, ...ingredientCatNamesFromIngs])),
   ];
 
+  const unitCatNames = categories.filter((c) => c.type === 'unit').map((c) => c.name);
+  const ingredientUnits = ingredients.map((i) => i.unit).filter(Boolean);
+  const availableUnits = ['Tất cả', ...Array.from(new Set([...unitCatNames, ...ingredientUnits]))];
+
   const filtered = ingredients.filter((ing) => {
     const matchesQuery =
       matchesSearch(ing.name, searchQuery) ||
@@ -121,9 +125,8 @@ export const IngredientsView: React.FC<IngredientsViewProps> = ({
 
         <button
           onClick={() => {
-            const units = ['Tất cả', 'gram', 'ml', 'quả', 'ổ'];
-            const nextIdx = (units.indexOf(selectedUnitFilter) + 1) % units.length;
-            setSelectedUnitFilter(units[nextIdx]);
+            const nextIdx = (availableUnits.indexOf(selectedUnitFilter) + 1) % availableUnits.length;
+            setSelectedUnitFilter(availableUnits[nextIdx]);
           }}
           className={`px-3 py-2.5 rounded-2xl border flex items-center justify-center gap-1.5 text-xs font-bold transition-all ${
             selectedUnitFilter !== 'Tất cả'

@@ -8,10 +8,32 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Recipe, IngredientItem, Category, ShoppingListItem } from '../types';
 
 /**
- * Seeds Firestore collection if it's currently empty, so users get standard data right away.
+ * Clean undefined values from JS objects so Firestore setDoc doesn't throw invalid data errors.
+ */
+function sanitizeForFirestore(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return null;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map((item) => sanitizeForFirestore(item));
+  }
+  if (typeof obj === 'object') {
+    const cleaned: Record<string, any> = {};
+    for (const key of Object.keys(obj)) {
+      const val = obj[key];
+      if (val !== undefined) {
+        cleaned[key] = sanitizeForFirestore(val);
+      }
+    }
+    return cleaned;
+  }
+  return obj;
+}
+
+/**
+ * Seeds Firestore collection if it's currently empty.
  */
 export async function seedCollectionIfEmpty<T extends { id: string }>(
   collectionName: string,
@@ -24,7 +46,7 @@ export async function seedCollectionIfEmpty<T extends { id: string }>(
       const batch = writeBatch(db);
       initialItems.forEach((item) => {
         const itemRef = doc(db, collectionName, item.id);
-        batch.set(itemRef, item);
+        batch.set(itemRef, sanitizeForFirestore(item));
       });
       await batch.commit();
       console.log(`[Firestore] Seeded ${collectionName} with initial items.`);
@@ -67,7 +89,8 @@ export async function syncSaveDoc<T extends { id: string }>(
 ) {
   try {
     const docRef = doc(db, collectionName, item.id);
-    await setDoc(docRef, item, { merge: true });
+    const cleaned = sanitizeForFirestore(item);
+    await setDoc(docRef, cleaned, { merge: true });
   } catch (err) {
     console.error(`[Firestore Save Error] ${collectionName}/${item.id}:`, err);
   }
@@ -90,10 +113,11 @@ export async function syncBatchSave<T extends { id: string }>(
     const batch = writeBatch(db);
     items.forEach((item) => {
       const docRef = doc(db, collectionName, item.id);
-      batch.set(docRef, item, { merge: true });
+      batch.set(docRef, sanitizeForFirestore(item), { merge: true });
     });
     await batch.commit();
   } catch (err) {
     console.error(`[Firestore Batch Save Error] ${collectionName}:`, err);
   }
 }
+

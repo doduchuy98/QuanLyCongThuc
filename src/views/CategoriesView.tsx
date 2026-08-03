@@ -267,7 +267,13 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
               }
 
               // Check if matching custom unit category for delete option
-              const matchingCat = unitCats.find(c => c.name.toLowerCase() === unitName.toLowerCase());
+              const matchingCat = unitCats.find(c => c.name.toLowerCase() === unitName.toLowerCase()) || {
+                id: `ucat-${unitName.toLowerCase().replace(/\s+/g, '-')}`,
+                name: unitName,
+                type: 'unit' as const,
+                iconName: 'Ruler',
+                bgColor: bg,
+              };
 
               return (
                 <div
@@ -297,22 +303,20 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
                       </div>
                     </div>
 
-                    {matchingCat && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (isAdmin) {
-                            setCatToDelete(matchingCat);
-                          } else if (onOpenAdminLogin) {
-                            onOpenAdminLogin();
-                          }
-                        }}
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
-                        title="Xóa đơn vị tính"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isAdmin) {
+                          setCatToDelete(matchingCat);
+                        } else if (onOpenAdminLogin) {
+                          onOpenAdminLogin();
+                        }
+                      }}
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                      title="Xóa đơn vị tính"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
 
                   {/* List ingredients using this unit */}
@@ -499,7 +503,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Tên danh mục <span className="text-rose-500">*</span>
+                  {targetCatType === 'unit' ? 'Tên đơn vị tính' : 'Tên danh mục'} <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -509,7 +513,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
                       ? 'Ví dụ: Món nướng, Món lẩu...'
                       : targetCatType === 'ingredient'
                       ? 'Ví dụ: Thịt tươi, Rau củ, Gia vị...'
-                      : 'Ví dụ: Thể tích, Khối lượng, Đóng gói...'
+                      : 'Ví dụ: gram, kg, ml, cái, hộp, muỗng...'
                   }
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
