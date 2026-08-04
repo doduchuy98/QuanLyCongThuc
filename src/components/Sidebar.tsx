@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, ChefHat, LayoutGrid, Settings, Plus, Scale, ShieldCheck, Lock, Sparkles, Heart, Globe, PiggyBank, Utensils } from 'lucide-react';
+import { Home, ChefHat, LayoutGrid, Settings, Plus, Scale, ShieldCheck, Lock, Sparkles, Heart, Wallet, PiggyBank, Utensils } from 'lucide-react';
 import { ActiveTab, AppMode } from '../types';
 
 interface SidebarProps {
@@ -35,7 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems = [
     { id: 'home' as ActiveTab, label: 'Trang chủ', icon: Home, count: null },
     { id: 'recipes' as ActiveTab, label: 'Công thức', icon: ChefHat, count: recipesCount },
-    { id: 'browser' as ActiveTab, label: 'Trang duyệt web', icon: Globe, count: null },
+    { id: 'browser' as ActiveTab, label: 'Thu/Chi', icon: Wallet, count: null },
     { id: 'settings' as ActiveTab, label: 'Cài đặt & Dữ liệu', icon: Settings, count: null },
   ];
 

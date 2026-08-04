@@ -124,7 +124,11 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
   // Lending Balance State (Money lent to others)
   const [lendingBalance, setLendingBalance] = useState<number>(() => {
     const saved = localStorage.getItem('app_lending_balance');
-    return saved !== null ? parseFloat(saved) || 0 : 2500000;
+    if (saved !== null && saved !== '2500000') {
+      const parsed = parseFloat(saved);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
   });
   const [isEditLendingModalOpen, setIsEditLendingModalOpen] = useState(false);
   const [tempLendingInput, setTempLendingInput] = useState<string>('');
@@ -178,58 +182,81 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
     setIsAddModalOpen(true);
   };
 
-  // Calculate totals
-  const totalIncome = expenses
+  // All-time totals for current wallet balance
+  const allTimeIncome = expenses
     .filter((e) => e.type === 'income')
     .reduce((sum, e) => sum + e.amount, 0);
 
-  const totalExpense = expenses
+  const allTimeExpense = expenses
     .filter((e) => e.type === 'expense')
     .reduce((sum, e) => sum + e.amount, 0);
 
+  // Totals filtered by selected Month & Year
+  const totalIncome = expenses
+    .filter((e) => {
+      if (e.type !== 'income') return false;
+      const { year, month } = parseYearMonth(e.date);
+      const matchesYear = selectedYearFilter === 'all' || year === selectedYearFilter;
+      const matchesMonth = selectedMonthFilter === 'all' || month === selectedMonthFilter;
+      return matchesYear && matchesMonth;
+    })
+    .reduce((sum, e) => sum + e.amount, 0);
+
+  const totalExpense = expenses
+    .filter((e) => {
+      if (e.type !== 'expense') return false;
+      const { year, month } = parseYearMonth(e.date);
+      const matchesYear = selectedYearFilter === 'all' || year === selectedYearFilter;
+      const matchesMonth = selectedMonthFilter === 'all' || month === selectedMonthFilter;
+      return matchesYear && matchesMonth;
+    })
+    .reduce((sum, e) => sum + e.amount, 0);
+
   // 1. Khoản cho vay
-  let pendingLendAmount = 0; // Đang cho vay chưa thu hồi
-  let paidLendAmount = 0;    // Đã thu hồi / nhận lại tiền
+  let totalLendOriginal = 0; // Tổng gốc tiền cho vay
+  let totalLendRepaid = 0;   // Tổng tiền đã được trả trước / thu hồi
 
   // 2. Khoản đi vay
-  let pendingBorrowAmount = 0; // Đang mượn chưa trả
-  let paidBorrowAmount = 0;    // Đã đi trả nợ
+  let totalBorrowOriginal = 0; // Tổng gốc tiền đi vay
+  let totalBorrowRepaid = 0;   // Tổng tiền đã đi trả nợ
 
   expenses.filter((e) => e.type === 'loan').forEach((item) => {
     if (item.loanType === 'lend') {
       if (item.isRepayment) {
-        paidLendAmount += item.amount;
-      } else if (item.isPaid) {
-        paidLendAmount += item.amount;
+        totalLendRepaid += item.amount;
       } else {
-        pendingLendAmount += item.amount;
+        totalLendOriginal += item.amount;
+        if (item.isPaid) {
+          totalLendRepaid += item.amount;
+        }
       }
     } else if (item.loanType === 'borrow') {
       if (item.isRepayment) {
-        paidBorrowAmount += item.amount;
-      } else if (item.isPaid) {
-        paidBorrowAmount += item.amount;
+        totalBorrowRepaid += item.amount;
       } else {
-        pendingBorrowAmount += item.amount;
+        totalBorrowOriginal += item.amount;
+        if (item.isPaid) {
+          totalBorrowRepaid += item.amount;
+        }
       }
     }
   });
 
-  // Hiệu chỉnh nợ còn lại (Net Remaining)
-  const netPendingLend = Math.max(0, pendingLendAmount - paidLendAmount);
-  const netPendingBorrow = Math.max(0, pendingBorrowAmount - paidBorrowAmount);
+  // Số dư cho vay còn lại từ giao dịch = max(0, Cho vay - Đã thu hồi)
+  const netPendingLend = Math.max(0, totalLendOriginal - totalLendRepaid);
 
-  // SỐ DƯ CHO VAY = Số dư cho vay cơ sở + Net Pending Lend
+  // Số dư đi vay còn lại từ giao dịch = max(0, Đi vay - Đã trả)
+  const netPendingBorrow = Math.max(0, totalBorrowOriginal - totalBorrowRepaid);
+
+  // SỐ DƯ CHO VAY = Số dư cơ sở + Số dư cho vay chưa thu hồi
   const totalLendingDisplay = lendingBalance + netPendingLend;
 
-  // SỐ DƯ HIỆN TẠI = (Thu nhập - Chi tiêu) - Cho vay chưa thu + Cho vay đã thu hồi + Đi vay chưa trả - Đi vay đã đi trả
+  // SỐ DƯ HIỆN TẠI = (Thu nhập - Chi tiêu) - (Cho vay gốc - Cho vay đã thu hồi) + (Đi vay gốc - Đi vay đã trả)
   const netBalance =
-    totalIncome -
-    totalExpense -
+    allTimeIncome -
+    allTimeExpense -
     netPendingLend +
-    paidLendAmount +
-    netPendingBorrow -
-    paidBorrowAmount;
+    netPendingBorrow;
 
   // Main Balance = Current Net Balance + Total Lending Balance
   const mainBalance = netBalance + totalLendingDisplay;
@@ -547,20 +574,7 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
           {/* Card 2: Số dư cho vay */}
           <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex flex-col justify-between space-y-2 hover:border-amber-300 transition-colors">
             <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
-              <span className="flex items-center gap-1.5">
-                <span>Số dư cho vay</span>
-                <button
-                  onClick={() => {
-                    setTempLendingInput(lendingBalance.toString());
-                    setIsEditLendingModalOpen(true);
-                  }}
-                  className="text-[10px] font-bold text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 px-1.5 py-0.5 rounded-md transition-colors"
-                  title="Chỉnh sửa số dư cho vay"
-                >
-                  <Pencil className="w-2.5 h-2.5 inline mr-0.5" />
-                  Sửa
-                </button>
-              </span>
+              <span>Số dư cho vay</span>
               <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
                 <HandCoins className="w-3.5 h-3.5" />
               </div>
@@ -573,7 +587,11 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
           {/* Card 3: Tổng Thu Nhập */}
           <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex flex-col justify-between space-y-2 hover:border-emerald-300 transition-colors">
             <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
-              <span>Tổng thu nhập</span>
+              <span>
+                Tổng thu nhập
+                {selectedMonthFilter !== 'all' && ` (Tháng ${parseInt(selectedMonthFilter, 10)})`}
+                {selectedYearFilter !== 'all' && selectedMonthFilter === 'all' && ` (${selectedYearFilter})`}
+              </span>
               <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
                 <ArrowDownLeft className="w-3.5 h-3.5" />
               </div>
@@ -586,7 +604,11 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
           {/* Card 4: Tổng Chi Tiêu */}
           <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex flex-col justify-between space-y-2 hover:border-rose-300 transition-colors">
             <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
-              <span>Tổng chi tiêu</span>
+              <span>
+                Tổng chi tiêu
+                {selectedMonthFilter !== 'all' && ` (Tháng ${parseInt(selectedMonthFilter, 10)})`}
+                {selectedYearFilter !== 'all' && selectedMonthFilter === 'all' && ` (${selectedYearFilter})`}
+              </span>
               <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
                 <ArrowUpRight className="w-3.5 h-3.5" />
               </div>
@@ -601,10 +623,10 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
       {/* Main Action Bar & Search */}
       <div className="bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* Tabs Filter */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl flex-wrap sm:flex-nowrap">
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl flex-nowrap overflow-x-auto no-scrollbar whitespace-nowrap shrink-0">
           <button
             onClick={() => setActiveTab('all')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
               activeTab === 'all'
                 ? 'bg-white text-slate-900 shadow-2xs'
                 : 'text-slate-500 hover:text-slate-800'
@@ -614,7 +636,7 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('expense')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
               activeTab === 'expense'
                 ? 'bg-rose-500 text-white shadow-2xs'
                 : 'text-slate-500 hover:text-slate-800'
@@ -624,7 +646,7 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('income')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
               activeTab === 'income'
                 ? 'bg-emerald-600 text-white shadow-2xs'
                 : 'text-slate-500 hover:text-slate-800'
@@ -634,7 +656,7 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('loan')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
               activeTab === 'loan'
                 ? 'bg-indigo-600 text-white shadow-2xs'
                 : 'text-slate-500 hover:text-slate-800'
@@ -686,20 +708,20 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
         {/* Transaction History (2 Cols) */}
         <div className="lg:col-span-2 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
-            <div className="flex items-center gap-2">
-              <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
+            <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto flex-nowrap overflow-x-auto no-scrollbar">
+              <h3 className="font-extrabold text-slate-800 text-xs sm:text-sm flex items-center gap-1.5 whitespace-nowrap shrink-0">
                 <span>{activeTab === 'loan' ? 'Lịch sử vay mượn' : 'Lịch sử giao dịch'}</span>
-                <span className="text-xs font-semibold text-slate-400">
+                <span className="text-[11px] sm:text-xs font-semibold text-slate-400">
                   ({activeTab === 'loan' && loanViewMode === 'grouped' ? personLoanSummaries.length : filteredExpenses.length} {activeTab === 'loan' && loanViewMode === 'grouped' ? 'người' : 'giao dịch'})
                 </span>
               </h3>
 
               {/* View Switcher for Loan Tab */}
               {activeTab === 'loan' && (
-                <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-[11px] font-bold">
+                <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-[11px] font-bold shrink-0 whitespace-nowrap">
                   <button
                     onClick={() => setLoanViewMode('grouped')}
-                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                    className={`px-2.5 py-1 rounded-lg transition-all whitespace-nowrap shrink-0 ${
                       loanViewMode === 'grouped'
                         ? 'bg-white text-indigo-700 shadow-2xs'
                         : 'text-slate-500 hover:text-slate-800'
@@ -709,7 +731,7 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
                   </button>
                   <button
                     onClick={() => setLoanViewMode('flat')}
-                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                    className={`px-2.5 py-1 rounded-lg transition-all whitespace-nowrap shrink-0 ${
                       loanViewMode === 'flat'
                         ? 'bg-white text-indigo-700 shadow-2xs'
                         : 'text-slate-500 hover:text-slate-800'
@@ -1042,11 +1064,11 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
                   return (
                     <div
                       key={item.id}
-                      className="p-3 sm:p-3.5 flex items-center justify-between gap-2 hover:bg-slate-50/80 transition-colors group"
+                      className="p-2.5 sm:p-3 flex items-center justify-between gap-2 hover:bg-slate-50/80 transition-colors group overflow-hidden"
                     >
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
                         <div
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-2xs ${
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${
                             isInc
                               ? 'bg-emerald-100 text-emerald-700'
                               : isLoan
@@ -1059,54 +1081,51 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
                           <Icon className="w-4 h-4 stroke-[2]" />
                         </div>
 
-                        <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
-                          <div className="flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap">
-                            <h4 className="font-bold text-slate-800 text-xs sm:text-sm truncate whitespace-nowrap">
-                              {item.note}
-                            </h4>
+                        <div className="flex items-center gap-1.5 min-w-0 overflow-hidden whitespace-nowrap">
+                          <h4 className="font-bold text-slate-800 text-xs sm:text-sm truncate">
+                            {item.note || (isLoan ? item.personName : item.category)}
+                          </h4>
 
-                            {isLoan ? (
-                              <span
-                                className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold flex-shrink-0 whitespace-nowrap ${
-                                  item.isRepayment
-                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                    : item.loanType === 'borrow'
-                                    ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                                    : 'bg-indigo-100 text-indigo-800 border border-indigo-300'
-                                }`}
-                              >
-                                {item.isRepayment ? 'Trả trước' : item.loanType === 'borrow' ? 'Đi vay' : 'Cho vay'}
-                              </span>
-                            ) : (
-                              <span
-                                className={`hidden sm:inline-block px-2 py-0.5 rounded-md text-[10px] font-extrabold flex-shrink-0 whitespace-nowrap ${
-                                  isInc
-                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                    : 'bg-slate-100 text-slate-600 border border-slate-200'
-                                }`}
-                              >
-                                {item.category}
-                              </span>
-                            )}
-
-                            <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap flex-shrink-0 hidden md:inline">
-                              {item.date}
+                          {/* Person name if loan and different from note */}
+                          {isLoan && item.personName && item.note !== item.personName && (
+                            <span className="text-[11px] text-slate-500 font-medium truncate shrink-0 max-w-[90px] sm:max-w-none">
+                              ({item.personName})
                             </span>
-                          </div>
-
-                          {/* Person / Partner name if loan */}
-                          {isLoan && item.personName && (
-                            <div className="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
-                              <Users className="w-3 h-3 text-slate-400 inline" />
-                              <span>Người giao dịch: <strong>{item.personName}</strong></span>
-                            </div>
                           )}
+
+                          {isLoan ? (
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-extrabold shrink-0 whitespace-nowrap ${
+                                item.isRepayment
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                  : item.loanType === 'borrow'
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                  : 'bg-indigo-100 text-indigo-800 border border-indigo-300'
+                              }`}
+                            >
+                              {item.isRepayment ? 'Trả trước' : item.loanType === 'borrow' ? 'Đi vay' : 'Cho vay'}
+                            </span>
+                          ) : (
+                            <span
+                              className={`hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] font-extrabold shrink-0 whitespace-nowrap ${
+                                isInc
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : 'bg-slate-100 text-slate-600 border border-slate-200'
+                              }`}
+                            >
+                              {item.category}
+                            </span>
+                          )}
+
+                          <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap shrink-0 hidden md:inline">
+                            {item.date}
+                          </span>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2.5 flex-shrink-0">
+                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                         <div
-                          className={`text-xs sm:text-sm font-extrabold text-right whitespace-nowrap ${
+                          className={`text-xs sm:text-sm font-extrabold text-right whitespace-nowrap shrink-0 ${
                             isInc || item.isRepayment
                               ? 'text-emerald-600'
                               : isLoan
@@ -1121,24 +1140,24 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
 
                         {/* Loan Settled Button */}
                         {isLoan && (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center shrink-0">
                             {item.isPaid ? (
                               <button
                                 onClick={() => onUpdateExpense?.({ ...item, isPaid: false })}
-                                className="px-2.5 py-1 rounded-xl text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200 transition-all flex items-center gap-1"
+                                className="px-2 py-1 rounded-lg text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200 transition-all flex items-center gap-1 shrink-0"
                                 title="Bấm để chuyển về trạng thái Chưa trả"
                               >
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                                 <span>Đã trả</span>
                               </button>
                             ) : (
                               <button
                                 onClick={() => onUpdateExpense?.({ ...item, isPaid: true })}
-                                className="px-2.5 py-1 rounded-xl text-[11px] font-extrabold bg-amber-500 hover:bg-amber-600 text-white shadow-2xs transition-all flex items-center gap-1"
+                                className="px-2 py-1 rounded-lg text-[10px] font-extrabold bg-amber-500 hover:bg-amber-600 text-white shadow-2xs transition-all flex items-center gap-1 shrink-0"
                                 title="Đánh dấu đã trả khoản vay"
                               >
-                                <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                                <span>Đã trả khoản vay</span>
+                                <Check className="w-3 h-3 stroke-[2.5]" />
+                                <span>Đã trả</span>
                               </button>
                             )}
                           </div>
@@ -1146,7 +1165,7 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
 
                         <button
                           onClick={() => setExpToDelete(item)}
-                          className="w-7 h-7 rounded-full text-slate-300 hover:text-rose-500 hover:bg-rose-50 flex items-center justify-center transition-colors opacity-80 group-hover:opacity-100"
+                          className="w-6 h-6 rounded-full text-slate-300 hover:text-rose-500 hover:bg-rose-50 flex items-center justify-center transition-colors opacity-80 group-hover:opacity-100 shrink-0"
                           title="Xóa giao dịch"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1202,8 +1221,8 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
 
       {/* EDIT LENDING BALANCE MODAL */}
       {isEditLendingModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-fade-in">
-          <div className="relative w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl border border-amber-100 space-y-4">
+        <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-3 sm:p-4 pb-28 sm:pb-6 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
+          <div className="relative w-full max-w-sm bg-white rounded-3xl p-4 sm:p-5 shadow-2xl border border-amber-100 space-y-4 max-h-[80vh] overflow-y-auto no-scrollbar mb-2 sm:mb-0">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
@@ -1249,7 +1268,7 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
                 💡 <strong>Số dư chính</strong> sẽ tự động tính = <strong>Số dư hiện tại</strong> + <strong>Số dư cho vay</strong>.
               </div>
 
-              <div className="pt-1">
+              <div className="pt-2 sticky bottom-0 bg-white py-2 z-10 border-t border-slate-100">
                 <button
                   type="submit"
                   className="w-full py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
@@ -1265,8 +1284,8 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
 
       {/* ADD TRANSACTION / LOAN MODAL */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-fade-in">
-          <div className="relative w-full max-w-md bg-white rounded-3xl p-5 shadow-2xl border border-emerald-100 space-y-4 max-h-[90vh] overflow-y-auto no-scrollbar">
+        <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-3 sm:p-4 pb-28 sm:pb-6 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
+          <div className="relative w-full max-w-md bg-white rounded-3xl p-4 sm:p-5 shadow-2xl border border-emerald-100 space-y-3.5 max-h-[80vh] overflow-y-auto no-scrollbar mb-2 sm:mb-0">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-bold text-slate-800 text-base">
                 {type === 'loan' ? 'Tạo Ghi Chép Vay Mượn' : 'Ghi chép Thu / Chi mới'}
@@ -1472,7 +1491,7 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
               </div>
 
               {/* Submit Button */}
-              <div className="pt-2">
+              <div className="pt-2 sticky bottom-0 bg-white py-2 z-10 border-t border-slate-100">
                 <button
                   type="submit"
                   className={`w-full py-3 rounded-2xl text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 ${
@@ -1492,8 +1511,8 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
 
       {/* Modal Trả Trước / Thanh Toán Từng Phần */}
       {repaymentModalData && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4">
+        <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-3 sm:p-4 pb-28 sm:pb-6 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-white rounded-3xl p-4 sm:p-5 shadow-2xl border border-slate-100 space-y-3.5 max-h-[80vh] overflow-y-auto no-scrollbar mb-2 sm:mb-0">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
@@ -1580,7 +1599,7 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
                 />
               </div>
 
-              <div className="flex items-center gap-2 pt-2">
+              <div className="flex items-center gap-2 pt-2 sticky bottom-0 bg-white py-2 z-10 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setRepaymentModalData(null)}

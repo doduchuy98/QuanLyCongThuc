@@ -21,7 +21,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 backdrop-blur-xs transition-opacity animate-fade-in">
+    <div className="fixed inset-0 z-[80] flex items-end justify-center p-3 sm:p-4 pb-28 sm:pb-6 bg-slate-900/40 backdrop-blur-xs transition-opacity animate-fade-in">
       {/* Click outside backdrop */}
       <div className="absolute inset-0" onClick={onClose} />
 

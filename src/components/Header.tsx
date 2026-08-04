@@ -107,36 +107,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
       <div className="flex items-center gap-1.5 flex-shrink-0">
-        {/* MODE SWITCH BUTTON IN HEADER (Chỉ Admin mới hiện) */}
-        {isAdmin && onToggleAppMode && (
-          <button
-            onClick={onToggleAppMode}
-            title={
-              appMode === 'kitchen'
-                ? 'Đang ở Quản lý Bếp - Nhấn để đổi sang Quản lý Chi tiêu Cá nhân'
-                : 'Đang ở Quản lý Chi tiêu - Nhấn để đổi sang Quản lý Bếp'
-            }
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black shadow-2xs border transition-all active:scale-95 ${
-              appMode === 'kitchen'
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                : 'bg-pink-50 text-pink-800 border-pink-200 hover:bg-pink-100'
-            }`}
-          >
-            {appMode === 'kitchen' ? (
-              <>
-                <PiggyBank className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="hidden sm:inline">Quản lý</span>
-                <span>Chi tiêu ↗</span>
-              </>
-            ) : (
-              <>
-                <Utensils className="w-3.5 h-3.5 text-pink-600" />
-                <span className="hidden sm:inline">Quản lý</span>
-                <span>Bếp ↗</span>
-              </>
-            )}
-          </button>
-        )}
+
 
         {/* Cloud Online Sync Badge */}
         {isCloudSynced && (

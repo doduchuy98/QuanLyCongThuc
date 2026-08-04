@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, ChefHat, Settings, Globe, Plus } from 'lucide-react';
+import { Home, ChefHat, Settings, Wallet, Plus } from 'lucide-react';
 import { ActiveTab } from '../types';
 
 interface BottomNavProps {
@@ -24,7 +24,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   ];
 
   const rightTabs = [
-    { id: 'browser' as ActiveTab, label: 'Duyệt web', icon: Globe },
+    { id: 'browser' as ActiveTab, label: 'Thu/Chi', icon: Wallet },
     { id: 'settings' as ActiveTab, label: 'Cài đặt', icon: Settings },
   ];
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { WifiOff, Database } from 'lucide-react';
+import { WifiOff, Database, ShieldAlert } from 'lucide-react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { BottomNav } from './components/BottomNav';
@@ -48,6 +48,8 @@ export default function App() {
 
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
   const [isChangePinOpen, setIsChangePinOpen] = useState(false);
+  const [adminNoticeMsg, setAdminNoticeMsg] = useState<string | null>(null);
+  const [pendingAdminTab, setPendingAdminTab] = useState<ActiveTab | null>(null);
   const [selectedRecipeCategory, setSelectedRecipeCategory] = useState<string>('Tất cả');
   const [selectedIngredientCategory, setSelectedIngredientCategory] = useState<string>('Tất cả');
 
@@ -55,6 +57,13 @@ export default function App() {
     if (inputPin === adminPin) {
       setIsAdmin(true);
       localStorage.setItem('app_is_admin', 'true');
+      if (pendingAdminTab) {
+        setActiveTab(pendingAdminTab);
+        setSubView('none');
+        setSelectedRecipeId(null);
+        setSelectedIngredient(null);
+        setPendingAdminTab(null);
+      }
       return true;
     }
     return false;
@@ -418,6 +427,18 @@ export default function App() {
 
   // Navigation Handlers
   const handleTabChange = (tab: ActiveTab) => {
+    if (!isAdmin) {
+      if (tab === 'browser') {
+        setAdminNoticeMsg('Chỉ Admin mới được phép truy cập');
+        return;
+      }
+      if (tab === 'settings') {
+        setPendingAdminTab('settings');
+        setIsAdminLoginOpen(true);
+        return;
+      }
+    }
+
     setActiveTab(tab);
     setSubView('none');
     setSelectedRecipeId(null);
@@ -564,7 +585,7 @@ export default function App() {
         headerTitle = 'Công thức';
         break;
       case 'browser':
-        headerTitle = 'Trang duyệt web';
+        headerTitle = 'Thu/Chi';
         break;
       case 'ingredients':
         headerTitle = 'Danh sách nguyên liệu';
@@ -729,7 +750,15 @@ export default function App() {
                   />
                 )}
 
-                {activeTab === 'browser' && <BrowserView />}
+                {activeTab === 'browser' && (
+                  <ExpenseTrackerView
+                    expenses={expenses}
+                    onAddExpense={handleAddExpense}
+                    onDeleteExpense={handleDeleteExpense}
+                    onUpdateExpense={handleUpdateExpense}
+                    onSwitchMode={setAppMode}
+                  />
+                )}
 
                 {activeTab === 'ingredients' && (
                   <IngredientsView
@@ -783,8 +812,8 @@ export default function App() {
           onAddRecipe={handleStartAddRecipe}
           onOpenUnitConverter={() => setIsUnitConverterOpen(true)}
           onOpenSettings={() => {
-            setActiveTab('settings');
-            setSubView('none');
+            setIsQuickAddOpen(false);
+            handleTabChange('settings');
           }}
         />
 
@@ -806,7 +835,10 @@ export default function App() {
         {/* Admin PIN Login Modal */}
         <AdminLoginModal
           isOpen={isAdminLoginOpen}
-          onClose={() => setIsAdminLoginOpen(false)}
+          onClose={() => {
+            setIsAdminLoginOpen(false);
+            setPendingAdminTab(null);
+          }}
           onLogin={handleAdminLogin}
         />
 
@@ -817,6 +849,29 @@ export default function App() {
           currentPin={adminPin}
           onChangePin={handleChangeAdminPin}
         />
+
+        {/* Admin Access Restriction Notice Modal */}
+        {adminNoticeMsg && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
+            <div className="relative w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl border border-rose-100 text-center space-y-4">
+              <div className="w-12 h-12 mx-auto rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shadow-2xs">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-slate-800 text-base">Thông Báo Truy Cập</h3>
+                <p className="text-xs text-slate-600 font-bold mt-1.5 px-2">
+                  {adminNoticeMsg}
+                </p>
+              </div>
+              <button
+                onClick={() => setAdminNoticeMsg(null)}
+                className="w-full py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs shadow-md transition-all active:scale-98"
+              >
+                Đã hiểu
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
