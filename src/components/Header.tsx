@@ -107,8 +107,8 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
       <div className="flex items-center gap-1.5 flex-shrink-0">
-        {/* MODE SWITCH BUTTON IN HEADER */}
-        {onToggleAppMode && (
+        {/* MODE SWITCH BUTTON IN HEADER (Chỉ Admin mới hiện) */}
+        {isAdmin && onToggleAppMode && (
           <button
             onClick={onToggleAppMode}
             title={

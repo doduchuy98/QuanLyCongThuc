@@ -11,6 +11,7 @@ interface HomeViewProps {
   onNavigateToBrowser?: () => void;
   onSwitchToExpense?: () => void;
   onSelectRecipe: (recipeId: string) => void;
+  isAdmin?: boolean;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
@@ -21,6 +22,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onNavigateToBrowser,
   onSwitchToExpense,
   onSelectRecipe,
+  isAdmin,
 }) => {
   const totalRecipes = recipes.length;
   const totalCategories = categories.length;
@@ -81,8 +83,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </button>
       )}
 
-      {/* Mode Switch Card Banner: Switch to Personal Expense Management */}
-      {onSwitchToExpense && (
+      {/* Mode Switch Card Banner: Switch to Personal Expense Management (Chỉ Admin mới hiện) */}
+      {isAdmin && onSwitchToExpense && (
         <button
           onClick={onSwitchToExpense}
           className="w-full px-3.5 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 text-white shadow-md shadow-emerald-200 flex items-center justify-between text-left hover:opacity-95 transition-all group border border-emerald-400/30"
@@ -113,7 +115,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </button>
       )}
 
-      {/* Section: Công thức mới cập nhật */}
+      {/* Section: Công thức mới cập nhật (Cuộn ngang) */}
       <div className="pt-2">
         <div className="flex items-center justify-between mb-3 px-1">
           <h3 className="text-sm font-bold text-slate-800">Công thức mới cập nhật</h3>
@@ -125,46 +127,50 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </button>
         </div>
 
-        {/* Recipe Cards List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {recipes.slice(0, 4).map((recipe) => (
+        {/* Recipe Cards Horizontal Scrollable List */}
+        <div className="flex overflow-x-auto gap-3 pb-3 pt-1 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none snap-x snap-mandatory">
+          {recipes.slice(0, 10).map((recipe) => (
             <div
               key={recipe.id}
               onClick={() => onSelectRecipe(recipe.id)}
-              className="flex items-center justify-between p-3 rounded-[20px] bg-white border border-slate-100 shadow-2xs hover:shadow-md transition-all cursor-pointer group"
+              className="w-[180px] sm:w-[200px] flex-shrink-0 snap-start bg-white p-2.5 rounded-2xl border border-slate-100 shadow-2xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between space-y-2"
             >
-              <div className="flex items-center gap-3">
+              <div className="relative w-full h-28 rounded-xl overflow-hidden bg-slate-100 border border-slate-100/80 flex-shrink-0">
                 {recipe.imageUrl ? (
                   <img
                     src={recipe.imageUrl}
                     alt={recipe.title}
-                    className="w-14 h-14 rounded-2xl object-cover border border-slate-100 group-hover:scale-105 transition-transform"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 ) : (
-                  <div className="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200/80 flex flex-col items-center justify-center text-slate-400 group-hover:scale-105 transition-transform flex-shrink-0">
-                    <ImageOff className="w-4 h-4 opacity-40 mb-0.5 text-slate-500" />
-                    <span className="text-[8px] font-extrabold text-slate-500">No image</span>
+                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
+                    <ImageOff className="w-5 h-5 opacity-40 mb-1 text-slate-500" />
+                    <span className="text-[9px] font-extrabold text-slate-500">Chưa có ảnh</span>
                   </div>
                 )}
-                <div>
-                  <h4 className="font-bold text-slate-800 text-sm group-hover:text-[#FF8FB8] transition-colors">
-                    {recipe.title}
-                  </h4>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Cập nhật: {recipe.updatedAt}
-                  </p>
-                </div>
+                {recipe.category && (
+                  <span className="absolute top-2 left-2 px-2 py-0.5 bg-slate-900/70 backdrop-blur-xs text-white text-[9px] font-bold rounded-lg truncate max-w-[80%]">
+                    {recipe.category}
+                  </span>
+                )}
               </div>
 
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectRecipe(recipe.id);
-                }}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-              >
-                <MoreVertical className="w-4 h-4" />
-              </button>
+              <div className="space-y-1 min-w-0 flex-1 flex flex-col justify-between">
+                <div>
+                  <h4 className="font-bold text-slate-800 text-xs sm:text-sm group-hover:text-[#FF8FB8] transition-colors line-clamp-2 leading-snug">
+                    {recipe.title}
+                  </h4>
+                </div>
+
+                <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-50">
+                  <span className="truncate">Cập nhật: {recipe.updatedAt}</span>
+                  {recipe.rating ? (
+                    <span className="font-bold text-amber-500 flex items-center gap-0.5 flex-shrink-0">
+                      ★ {recipe.rating}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
             </div>
           ))}
         </div>

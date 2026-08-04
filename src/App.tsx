@@ -29,7 +29,8 @@ import {
   syncSaveDoc,
   syncDeleteDoc,
   syncBatchSave,
-} from './services/supabaseSync';
+  syncReplaceCollection,
+} from './services/firestoreSync';
 
 export default function App() {
   const { isOffline } = useOffline();
@@ -62,6 +63,7 @@ export default function App() {
   const handleAdminLogout = () => {
     setIsAdmin(false);
     localStorage.removeItem('app_is_admin');
+    setAppMode('kitchen');
   };
 
   const handleChangeAdminPin = (newPin: string) => {
@@ -76,12 +78,23 @@ export default function App() {
   });
 
   const handleToggleAppMode = () => {
+    if (!isAdmin) {
+      setIsAdminLoginOpen(true);
+      return;
+    }
     setAppMode((prev) => {
       const nextMode = prev === 'kitchen' ? 'finance' : 'kitchen';
       localStorage.setItem('app_mode', nextMode);
       return nextMode;
     });
   };
+
+  // Guard: If not admin, force mode back to kitchen
+  useEffect(() => {
+    if (!isAdmin && appMode === 'finance') {
+      setAppMode('kitchen');
+    }
+  }, [isAdmin, appMode]);
 
   // Expenses State
   const [expenses, setExpenses] = useState<ExpenseItem[]>(() => {
@@ -151,96 +164,110 @@ export default function App() {
     localStorage.setItem('app_shopping_list', JSON.stringify(shoppingList));
   }, [shoppingList]);
 
-  // Firestore Real-Time Cloud Sync (Online mode for Vercel)
+  // Firestore Real-Time Cloud Sync (Online mode)
   const [isCloudSynced, setIsCloudSynced] = useState<boolean>(true);
 
   useEffect(() => {
-    // 1. Get saved local data if present
-    const savedRecipesStr = localStorage.getItem('app_recipes');
-    const localRecipes: Recipe[] = savedRecipesStr ? JSON.parse(savedRecipesStr) : INITIAL_RECIPES;
+    let isMounted = true;
+    let unsubs: (() => void)[] = [];
 
-    const savedIngsStr = localStorage.getItem('app_ingredients');
-    const localIngs: IngredientItem[] = savedIngsStr ? JSON.parse(savedIngsStr) : INITIAL_INGREDIENTS;
+    const initSync = async () => {
+      // 1. Get saved local data if present
+      const savedRecipesStr = localStorage.getItem('app_recipes');
+      const localRecipes: Recipe[] = savedRecipesStr ? JSON.parse(savedRecipesStr) : INITIAL_RECIPES;
 
-    const savedCatsStr = localStorage.getItem('app_categories');
-    const localCats: Category[] = savedCatsStr ? JSON.parse(savedCatsStr) : INITIAL_CATEGORIES;
+      const savedIngsStr = localStorage.getItem('app_ingredients');
+      const localIngs: IngredientItem[] = savedIngsStr ? JSON.parse(savedIngsStr) : INITIAL_INGREDIENTS;
 
-    const savedShopStr = localStorage.getItem('app_shopping_list');
-    const localShop: ShoppingListItem[] = savedShopStr ? JSON.parse(savedShopStr) : INITIAL_SHOPPING_LIST;
+      const savedCatsStr = localStorage.getItem('app_categories');
+      const localCats: Category[] = savedCatsStr ? JSON.parse(savedCatsStr) : INITIAL_CATEGORIES;
 
-    const savedExpStr = localStorage.getItem('app_expenses');
-    const localExp: ExpenseItem[] = savedExpStr ? JSON.parse(savedExpStr) : INITIAL_EXPENSES;
+      const savedShopStr = localStorage.getItem('app_shopping_list');
+      const localShop: ShoppingListItem[] = savedShopStr ? JSON.parse(savedShopStr) : INITIAL_SHOPPING_LIST;
 
-    // 2. Seed initial data if Firestore collections are empty (preferring user local storage data)
-    seedCollectionIfEmpty('recipes', localRecipes);
-    seedCollectionIfEmpty('ingredients', localIngs);
-    seedCollectionIfEmpty('categories', localCats);
-    seedCollectionIfEmpty('shoppingList', localShop);
-    seedCollectionIfEmpty('expenses', localExp);
+      const savedExpStr = localStorage.getItem('app_expenses');
+      const localExp: ExpenseItem[] = savedExpStr ? JSON.parse(savedExpStr) : INITIAL_EXPENSES;
 
-    // 3. Subscribe to real-time updates from Firestore
+      // 2. Seed initial data if Firestore collections are empty (preferring user local storage data)
+      await Promise.all([
+        seedCollectionIfEmpty('recipes', localRecipes),
+        seedCollectionIfEmpty('ingredients', localIngs),
+        seedCollectionIfEmpty('categories', localCats),
+        seedCollectionIfEmpty('shoppingList', localShop),
+        seedCollectionIfEmpty('expenses', localExp),
+      ]);
 
-    const unsubRecipes = subscribeCollection<Recipe>(
-      'recipes',
-      (remoteRecipes) => {
-        if (remoteRecipes && remoteRecipes.length > 0) {
-          setRecipes(remoteRecipes);
-        }
-        setIsCloudSynced(true);
-      },
-      () => setIsCloudSynced(false)
-    );
+      if (!isMounted) return;
 
-    const unsubIngredients = subscribeCollection<IngredientItem>(
-      'ingredients',
-      (remoteIngs) => {
-        if (remoteIngs && remoteIngs.length > 0) {
-          setIngredients(remoteIngs);
-        }
-        setIsCloudSynced(true);
-      },
-      () => setIsCloudSynced(false)
-    );
+      // 3. Subscribe to real-time updates from Firestore
+      unsubs.push(
+        subscribeCollection<Recipe>(
+          'recipes',
+          (remoteRecipes) => {
+            if (!isMounted || !remoteRecipes) return;
+            setRecipes(remoteRecipes);
+            setIsCloudSynced(true);
+          },
+          () => setIsCloudSynced(false)
+        )
+      );
 
-    const unsubCategories = subscribeCollection<Category>(
-      'categories',
-      (remoteCats) => {
-        if (remoteCats && remoteCats.length > 0) {
-          setCategories(remoteCats);
-        }
-        setIsCloudSynced(true);
-      },
-      () => setIsCloudSynced(false)
-    );
+      unsubs.push(
+        subscribeCollection<IngredientItem>(
+          'ingredients',
+          (remoteIngs) => {
+            if (!isMounted || !remoteIngs) return;
+            setIngredients(remoteIngs);
+            setIsCloudSynced(true);
+          },
+          () => setIsCloudSynced(false)
+        )
+      );
 
-    const unsubShopping = subscribeCollection<ShoppingListItem>(
-      'shoppingList',
-      (remoteShop) => {
-        if (remoteShop) {
-          setShoppingList(remoteShop);
-        }
-        setIsCloudSynced(true);
-      },
-      () => setIsCloudSynced(false)
-    );
+      unsubs.push(
+        subscribeCollection<Category>(
+          'categories',
+          (remoteCats) => {
+            if (!isMounted || !remoteCats) return;
+            setCategories(remoteCats);
+            setIsCloudSynced(true);
+          },
+          () => setIsCloudSynced(false)
+        )
+      );
 
-    const unsubExpenses = subscribeCollection<ExpenseItem>(
-      'expenses',
-      (remoteExp) => {
-        if (remoteExp && remoteExp.length > 0) {
-          setExpenses(remoteExp);
-        }
-        setIsCloudSynced(true);
-      },
-      () => setIsCloudSynced(false)
-    );
+      unsubs.push(
+        subscribeCollection<ShoppingListItem>(
+          'shoppingList',
+          (remoteShop) => {
+            if (!isMounted || !remoteShop) return;
+            setShoppingList(remoteShop);
+            setIsCloudSynced(true);
+          },
+          () => setIsCloudSynced(false)
+        )
+      );
+
+      unsubs.push(
+        subscribeCollection<ExpenseItem>(
+          'expenses',
+          (remoteExp) => {
+            if (!isMounted || !remoteExp) return;
+            // Sap xep chi tieu theo ngay moi nhat len dau
+            const sorted = [...remoteExp].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            setExpenses(sorted);
+            setIsCloudSynced(true);
+          },
+          () => setIsCloudSynced(false)
+        )
+      );
+    };
+
+    initSync();
 
     return () => {
-      unsubRecipes();
-      unsubIngredients();
-      unsubCategories();
-      unsubShopping();
-      unsubExpenses();
+      isMounted = false;
+      unsubs.forEach((unsub) => unsub());
     };
   }, []);
 
@@ -474,10 +501,12 @@ export default function App() {
     setIngredients(INITIAL_INGREDIENTS);
     setCategories(INITIAL_CATEGORIES);
     setShoppingList(INITIAL_SHOPPING_LIST);
-    syncBatchSave('recipes', INITIAL_RECIPES);
-    syncBatchSave('ingredients', INITIAL_INGREDIENTS);
-    syncBatchSave('categories', INITIAL_CATEGORIES);
-    syncBatchSave('shoppingList', INITIAL_SHOPPING_LIST);
+    setExpenses(INITIAL_EXPENSES);
+    syncReplaceCollection('recipes', INITIAL_RECIPES);
+    syncReplaceCollection('ingredients', INITIAL_INGREDIENTS);
+    syncReplaceCollection('categories', INITIAL_CATEGORIES);
+    syncReplaceCollection('shoppingList', INITIAL_SHOPPING_LIST);
+    syncReplaceCollection('expenses', INITIAL_EXPENSES);
     localStorage.clear();
     setSubView('none');
     setActiveTab('home');
@@ -487,9 +516,9 @@ export default function App() {
     setRecipes(data.recipes);
     setIngredients(data.ingredients);
     setCategories(data.categories);
-    syncBatchSave('recipes', data.recipes);
-    syncBatchSave('ingredients', data.ingredients);
-    syncBatchSave('categories', data.categories);
+    syncReplaceCollection('recipes', data.recipes);
+    syncReplaceCollection('ingredients', data.ingredients);
+    syncReplaceCollection('categories', data.categories);
     setSubView('none');
     setActiveTab('home');
   };
@@ -502,7 +531,7 @@ export default function App() {
   let headerTitle = 'Trang chủ';
   let showBack = false;
 
-  if (appMode === 'finance' && subView === 'none') {
+  if (isAdmin && appMode === 'finance' && subView === 'none') {
     headerTitle = 'Quản lý Chi tiêu';
   } else if (subView === 'recipe_detail') {
     headerTitle = 'Chi tiết công thức';
@@ -601,7 +630,7 @@ export default function App() {
 
           {/* Main View Scroll Area */}
           <main className="flex-1 overflow-y-auto no-scrollbar">
-            {appMode === 'finance' && subView === 'none' ? (
+            {isAdmin && appMode === 'finance' && subView === 'none' ? (
               <ExpenseTrackerView
                 expenses={expenses}
                 onAddExpense={handleAddExpense}
@@ -672,6 +701,7 @@ export default function App() {
                     onNavigateToBrowser={() => handleTabChange('browser')}
                     onSwitchToExpense={() => setAppMode('finance')}
                     onSelectRecipe={handleSelectRecipe}
+                    isAdmin={isAdmin}
                   />
                 )}
 

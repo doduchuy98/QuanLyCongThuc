@@ -63,6 +63,41 @@
         "createdAt": { "type": "string" }
       },
       "required": ["id", "name"]
+    },
+    "expenses": {
+      "title": "Expenses",
+      "description": "Personal expense tracking items",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "date": { "type": "string" },
+        "note": { "type": "string" }
+      },
+      "required": ["id", "amount", "category", "date"]
+    }
+  },
+  "firestore": {
+    "/recipes/{recipeId}": {
+      "schema": { "$ref": "#/entities/recipes" },
+      "description": "Collection of recipes"
+    },
+    "/ingredients/{ingredientId}": {
+      "schema": { "$ref": "#/entities/ingredients" },
+      "description": "Master list of ingredients"
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/categories" },
+      "description": "Recipe categories"
+    },
+    "/shoppingList/{itemId}": {
+      "schema": { "$ref": "#/entities/shoppingList" },
+      "description": "Shopping list items"
+    },
+    "/expenses/{expenseId}": {
+      "schema": { "$ref": "#/entities/expenses" },
+      "description": "Personal expense items"
     }
   }
 }

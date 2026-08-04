@@ -58,8 +58,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* Mode Switch Button */}
-        {onToggleAppMode && (
+        {/* Mode Switch Button (Chỉ Admin mới hiện) */}
+        {isAdmin && onToggleAppMode && (
           <button
             onClick={onToggleAppMode}
             className={`w-full p-3 rounded-2xl border text-left font-black text-xs shadow-2xs transition-all flex items-center justify-between group active:scale-98 ${
