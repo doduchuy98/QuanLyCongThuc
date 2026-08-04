@@ -32,6 +32,9 @@ import {
   Pencil,
   Coins,
   FileSpreadsheet,
+  CheckCircle2,
+  Users,
+  Handshake,
 } from 'lucide-react';
 import { ExpenseItem, AppMode } from '../types';
 import { CuteDeleteModal } from '../components/CuteDeleteModal';
@@ -41,6 +44,7 @@ interface ExpenseTrackerViewProps {
   expenses: ExpenseItem[];
   onAddExpense: (item: Omit<ExpenseItem, 'id' | 'createdAt'>) => void;
   onDeleteExpense: (id: string) => void;
+  onUpdateExpense?: (item: ExpenseItem) => void;
   onSwitchMode: (mode: AppMode) => void;
 }
 
@@ -61,13 +65,22 @@ const INCOME_CATEGORIES = [
   { name: 'Thu nhập khác', icon: Gift, color: 'bg-purple-100 text-purple-700 border-purple-200' },
 ];
 
+const LOAN_CATEGORIES = [
+  { name: 'Cho vay', icon: HandCoins, color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+  { name: 'Đi vay', icon: Coins, color: 'bg-amber-100 text-amber-700 border-amber-200' },
+  { name: 'Tạm ứng', icon: CreditCard, color: 'bg-sky-100 text-sky-700 border-sky-200' },
+  { name: 'Nợ cá nhân', icon: Users, color: 'bg-purple-100 text-purple-700 border-purple-200' },
+  { name: 'Khác', icon: HelpCircle, color: 'bg-slate-100 text-slate-700 border-slate-200' },
+];
+
 export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
   expenses,
   onAddExpense,
   onDeleteExpense,
+  onUpdateExpense,
   onSwitchMode,
 }) => {
-  const [activeTab, setActiveTab] = useState<'all' | 'expense' | 'income'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'expense' | 'income' | 'loan'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>('all');
   const [selectedYearFilter, setSelectedYearFilter] = useState<string>('all');
@@ -118,12 +131,34 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
   }, [lendingBalance]);
 
   // Form State
-  const [type, setType] = useState<'expense' | 'income'>('expense');
+  const [type, setType] = useState<'expense' | 'income' | 'loan'>('expense');
+  const [loanType, setLoanType] = useState<'borrow' | 'lend'>('lend');
+  const [personName, setPersonName] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
   const [category, setCategory] = useState<string>('Ăn uống');
   const [note, setNote] = useState<string>('');
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'card'>('transfer');
+
+  const handleTypeChange = (newType: 'expense' | 'income' | 'loan') => {
+    setType(newType);
+    if (newType === 'expense') {
+      setCategory('Ăn uống');
+    } else if (newType === 'income') {
+      setCategory('Lương & Thưởng');
+    } else {
+      setCategory('Cho vay');
+      setLoanType('lend');
+    }
+  };
+
+  const handleOpenAddLoan = () => {
+    setType('loan');
+    setLoanType('lend');
+    setCategory('Cho vay');
+    setPersonName('');
+    setIsAddModalOpen(true);
+  };
 
   // Calculate totals
   const totalIncome = expenses
@@ -145,7 +180,8 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
     const matchesTab = activeTab === 'all' || e.type === activeTab;
     const matchesQuery =
       e.note.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      e.category.toLowerCase().includes(searchQuery.toLowerCase());
+      e.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (e.personName && e.personName.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const { year, month } = parseYearMonth(e.date);
     const matchesYear = selectedYearFilter === 'all' || year === selectedYearFilter;
@@ -168,10 +204,20 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
       return;
     }
 
-    const headers = ['Mã giao dịch', 'Ngày', 'Loại', 'Danh mục', 'Ghi chú', 'Số tiền (VNĐ)', 'Hình thức thanh toán'];
+    const headers = ['Mã giao dịch', 'Ngày', 'Loại', 'Danh mục', 'Ghi chú', 'Đối tác', 'Trạng thái', 'Số tiền (VNĐ)', 'Hình thức thanh toán'];
 
     const rows = filteredExpenses.map((item) => {
-      const typeText = item.type === 'income' ? 'Thu nhập' : 'Chi tiêu';
+      const typeText =
+        item.type === 'income'
+          ? 'Thu nhập'
+          : item.type === 'expense'
+          ? 'Chi tiêu'
+          : item.loanType === 'borrow'
+          ? 'Đi vay'
+          : 'Cho vay';
+
+      const statusText = item.type === 'loan' ? (item.isPaid ? 'Đã trả' : 'Chưa trả') : 'Hoàn tất';
+
       const payText =
         item.paymentMethod === 'cash'
           ? 'Tiền mặt'
@@ -185,19 +231,20 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
         `"${typeText}"`,
         `"${(item.category || '').replace(/"/g, '""')}"`,
         `"${(item.note || '').replace(/"/g, '""')}"`,
+        `"${(item.personName || '').replace(/"/g, '""')}"`,
+        `"${statusText}"`,
         item.amount,
         `"${payText}"`,
       ].join(',');
     });
 
-    // \uFEFF Byte Order Mark for UTF-8 compatibility with Excel
     const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     const today = new Date().toISOString().slice(0, 10);
-    a.download = `lich-su-chi-tieu-${today}.csv`;
+    a.download = `lich-su-giao-dich-${today}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -216,14 +263,18 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
       type,
       amount: numAmount,
       category,
-      note: note.trim() || (type === 'expense' ? 'Chi tiêu cá nhân' : 'Thu nhập'),
+      note: note.trim() || (type === 'expense' ? 'Chi tiêu cá nhân' : type === 'income' ? 'Thu nhập' : (loanType === 'lend' ? 'Cho vay' : 'Đi vay')),
       date,
       paymentMethod,
+      loanType: type === 'loan' ? loanType : undefined,
+      isPaid: type === 'loan' ? false : undefined,
+      personName: type === 'loan' ? personName.trim() : undefined,
     });
 
     // Reset Form
     setAmount('');
     setNote('');
+    setPersonName('');
     setIsAddModalOpen(false);
   };
 
@@ -239,6 +290,8 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
     if (foundExp) return foundExp.icon;
     const foundInc = INCOME_CATEGORIES.find((c) => c.name === catName);
     if (foundInc) return foundInc.icon;
+    const foundLoan = LOAN_CATEGORIES.find((c) => c.name === catName);
+    if (foundLoan) return foundLoan.icon;
     return Tag;
   };
 
@@ -337,7 +390,7 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
       {/* Main Action Bar & Search */}
       <div className="bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* Tabs Filter */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl flex-wrap sm:flex-nowrap">
           <button
             onClick={() => setActiveTab('all')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
@@ -368,6 +421,16 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
           >
             🟢 Thu nhập
           </button>
+          <button
+            onClick={() => setActiveTab('loan')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'loan'
+                ? 'bg-indigo-600 text-white shadow-2xs'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            🤝 Vay Mượn
+          </button>
         </div>
 
         {/* Search Bar */}
@@ -376,24 +439,34 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
             <input
               type="text"
-              placeholder="Tìm kiếm giao dịch, ghi chú..."
+              placeholder={activeTab === 'loan' ? "Tìm theo tên người vay, ghi chú..." : "Tìm kiếm giao dịch, ghi chú..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
             />
           </div>
 
-          <button
-            onClick={() => {
-              setType('expense');
-              setCategory('Ăn uống');
-              setIsAddModalOpen(true);
-            }}
-            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 flex-shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Thêm Thu/Chi</span>
-          </button>
+          {activeTab === 'loan' ? (
+            <button
+              onClick={handleOpenAddLoan}
+              className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 flex-shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Thêm khoản vay</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                setType('expense');
+                setCategory('Ăn uống');
+                setIsAddModalOpen(true);
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 flex-shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Thêm Thu/Chi</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -403,9 +476,9 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
         <div className="lg:col-span-2 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
             <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
-              <span>Lịch sử giao dịch</span>
+              <span>{activeTab === 'loan' ? 'Lịch sử vay mượn' : 'Lịch sử giao dịch'}</span>
               <span className="text-xs font-semibold text-slate-400">
-                ({filteredExpenses.length} giao dịch)
+                ({filteredExpenses.length} {activeTab === 'loan' ? 'khoản' : 'giao dịch'})
               </span>
             </h3>
 
@@ -455,7 +528,7 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
               <button
                 onClick={handleExportCsv}
                 className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-2.5 py-1 rounded-xl transition-colors flex items-center gap-1 shadow-2xs"
-                title="Xuất lịch sử chi tiêu ra file CSV"
+                title="Xuất lịch sử giao dịch ra file CSV"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Xuất CSV</span>
@@ -480,14 +553,21 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
           {filteredExpenses.length === 0 ? (
             <div className="bg-white rounded-3xl border border-dashed border-slate-200 p-8 text-center space-y-2">
               <PiggyBank className="w-10 h-10 text-slate-300 mx-auto" />
-              <p className="text-sm font-bold text-slate-700">Chưa có giao dịch nào</p>
-              <p className="text-xs text-slate-400">Nhấn nút "Thêm Thu/Chi" để ghi lại khoản thu chi mới!</p>
+              <p className="text-sm font-bold text-slate-700">
+                {activeTab === 'loan' ? 'Chưa có khoản vay mượn nào' : 'Chưa có giao dịch nào'}
+              </p>
+              <p className="text-xs text-slate-400">
+                {activeTab === 'loan'
+                  ? 'Nhấn nút "Thêm khoản vay" để ghi lại khoản vay hoặc cho mượn mới!'
+                  : 'Nhấn nút "Thêm Thu/Chi" để ghi lại khoản thu chi mới!'}
+              </p>
             </div>
           ) : (
             <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
               {filteredExpenses.map((item) => {
                 const Icon = getCategoryIcon(item.category);
                 const isInc = item.type === 'income';
+                const isLoan = item.type === 'loan';
 
                 return (
                   <div
@@ -496,44 +576,101 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <div
-                        className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-2xs ${
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-2xs ${
                           isInc
                             ? 'bg-emerald-100 text-emerald-700'
+                            : isLoan
+                            ? item.loanType === 'borrow'
+                              ? 'bg-amber-100 text-amber-700 border border-amber-200'
+                              : 'bg-indigo-100 text-indigo-700 border border-indigo-200'
                             : 'bg-rose-100 text-rose-700'
                         }`}
                       >
                         <Icon className="w-4 h-4 stroke-[2]" />
                       </div>
 
-                      <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden whitespace-nowrap">
-                        <h4 className="font-bold text-slate-800 text-xs sm:text-sm truncate whitespace-nowrap">
-                          {item.note}
-                        </h4>
+                      <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
+                        <div className="flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap">
+                          <h4 className="font-bold text-slate-800 text-xs sm:text-sm truncate whitespace-nowrap">
+                            {item.note}
+                          </h4>
 
-                        <span
-                          className={`hidden sm:inline-block px-2 py-0.5 rounded-md text-[10px] font-extrabold flex-shrink-0 whitespace-nowrap ${
-                            isInc
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-slate-100 text-slate-600 border border-slate-200'
-                          }`}
-                        >
-                          {item.category}
-                        </span>
+                          {isLoan ? (
+                            <span
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold flex-shrink-0 whitespace-nowrap ${
+                                item.loanType === 'borrow'
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                  : 'bg-indigo-100 text-indigo-800 border border-indigo-300'
+                              }`}
+                            >
+                              {item.loanType === 'borrow' ? 'Đi vay' : 'Cho vay'}
+                            </span>
+                          ) : (
+                            <span
+                              className={`hidden sm:inline-block px-2 py-0.5 rounded-md text-[10px] font-extrabold flex-shrink-0 whitespace-nowrap ${
+                                isInc
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : 'bg-slate-100 text-slate-600 border border-slate-200'
+                              }`}
+                            >
+                              {item.category}
+                            </span>
+                          )}
 
-                        <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap flex-shrink-0 hidden md:inline">
-                          {item.date}
-                        </span>
+                          <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap flex-shrink-0 hidden md:inline">
+                            {item.date}
+                          </span>
+                        </div>
+
+                        {/* Person / Partner name if loan */}
+                        {isLoan && item.personName && (
+                          <div className="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
+                            <Users className="w-3 h-3 text-slate-400 inline" />
+                            <span>Người giao dịch: <strong>{item.personName}</strong></span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2.5 flex-shrink-0">
                       <div
                         className={`text-xs sm:text-sm font-extrabold text-right whitespace-nowrap ${
-                          isInc ? 'text-emerald-600' : 'text-rose-600'
+                          isInc
+                            ? 'text-emerald-600'
+                            : isLoan
+                            ? item.loanType === 'borrow'
+                              ? 'text-amber-600'
+                              : 'text-indigo-600'
+                            : 'text-rose-600'
                         }`}
                       >
-                        {isInc ? '+' : '-'}{formatCurrency(item.amount)}
+                        {isInc ? '+' : isLoan ? (item.loanType === 'borrow' ? '+' : '-') : '-'}{formatCurrency(item.amount)}
                       </div>
+
+                      {/* Loan Settled Button */}
+                      {isLoan && (
+                        <div className="flex items-center gap-1">
+                          {item.isPaid ? (
+                            <button
+                              onClick={() => onUpdateExpense?.({ ...item, isPaid: false })}
+                              className="px-2.5 py-1 rounded-xl text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200 transition-all flex items-center gap-1"
+                              title="Bấm để chuyển về trạng thái Chưa trả"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Đã trả</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => onUpdateExpense?.({ ...item, isPaid: true })}
+                              className="px-2.5 py-1 rounded-xl text-[11px] font-extrabold bg-amber-500 hover:bg-amber-600 text-white shadow-2xs transition-all flex items-center gap-1"
+                              title="Đánh dấu đã trả khoản vay"
+                            >
+                              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                              <span>Đã trả khoản vay</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
 
                       <button
                         onClick={() => setExpToDelete(item)}
@@ -653,12 +790,14 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
         </div>
       )}
 
-      {/* ADD TRANSACTION MODAL */}
+      {/* ADD TRANSACTION / LOAN MODAL */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-fade-in">
-          <div className="relative w-full max-w-md bg-white rounded-3xl p-5 shadow-2xl border border-emerald-100 space-y-4">
+          <div className="relative w-full max-w-md bg-white rounded-3xl p-5 shadow-2xl border border-emerald-100 space-y-4 max-h-[90vh] overflow-y-auto no-scrollbar">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-bold text-slate-800 text-base">Ghi chép Thu / Chi mới</h3>
+              <h3 className="font-bold text-slate-800 text-base">
+                {type === 'loan' ? 'Tạo Ghi Chép Vay Mượn' : 'Ghi chép Thu / Chi mới'}
+              </h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}
                 className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200"
@@ -668,40 +807,100 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
             </div>
 
             <form onSubmit={handleSubmitForm} className="space-y-3.5">
-              {/* Type Switcher */}
-              <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-2xl">
+              {/* Type Switcher (3 Tabs) */}
+              <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-2xl text-[11px]">
                 <button
                   type="button"
-                  onClick={() => {
-                    setType('expense');
-                    setCategory('Ăn uống');
-                  }}
-                  className={`py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+                  onClick={() => handleTypeChange('expense')}
+                  className={`py-2 rounded-xl font-extrabold transition-all flex items-center justify-center gap-1 ${
                     type === 'expense'
                       ? 'bg-rose-500 text-white shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <ArrowUpRight className="w-4 h-4" />
-                  <span>Khoản Chi Tiêu</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                  <span>Chi Tiêu</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setType('income');
-                    setCategory('Lương & Thưởng');
-                  }}
-                  className={`py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+                  onClick={() => handleTypeChange('income')}
+                  className={`py-2 rounded-xl font-extrabold transition-all flex items-center justify-center gap-1 ${
                     type === 'income'
                       ? 'bg-emerald-600 text-white shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <ArrowDownLeft className="w-4 h-4" />
-                  <span>Khoản Thu Nhập</span>
+                  <ArrowDownLeft className="w-3.5 h-3.5" />
+                  <span>Thu Nhập</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleTypeChange('loan')}
+                  className={`py-2 rounded-xl font-extrabold transition-all flex items-center justify-center gap-1 ${
+                    type === 'loan'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Handshake className="w-3.5 h-3.5" />
+                  <span>Vay Mượn</span>
                 </button>
               </div>
+
+              {/* Sub-Loan Direction Switcher if Loan */}
+              {type === 'loan' && (
+                <div className="grid grid-cols-2 gap-2 bg-indigo-50/80 p-1.5 rounded-2xl border border-indigo-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoanType('lend');
+                      setCategory('Cho vay');
+                    }}
+                    className={`py-1.5 px-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1 ${
+                      loanType === 'lend'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'text-indigo-700 hover:bg-indigo-100'
+                    }`}
+                  >
+                    <HandCoins className="w-3.5 h-3.5" />
+                    <span>Cho vay (Người khác nợ)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoanType('borrow');
+                      setCategory('Đi vay');
+                    }}
+                    className={`py-1.5 px-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1 ${
+                      loanType === 'borrow'
+                        ? 'bg-amber-600 text-white shadow-xs'
+                        : 'text-amber-800 hover:bg-amber-100'
+                    }`}
+                  >
+                    <Coins className="w-3.5 h-3.5" />
+                    <span>Đi vay (Mình nợ)</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Person / Partner Name Input if Loan */}
+              {type === 'loan' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {loanType === 'lend' ? 'Người mượn tiền' : 'Người cho vay tiền'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ví dụ: Anh Nam, Bạn An, Ngân hàng..."
+                    value={personName}
+                    onChange={(e) => setPersonName(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              )}
 
               {/* Amount Input */}
               <div>
@@ -717,7 +916,7 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
                     required
                     min="1000"
                     step="1000"
-                    placeholder="Ví dụ: 100000"
+                    placeholder="Ví dụ: 1000000"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     className="w-full pl-8 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-extrabold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
@@ -740,7 +939,12 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
-                  {(type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map((c) => (
+                  {(type === 'expense'
+                    ? EXPENSE_CATEGORIES
+                    : type === 'income'
+                    ? INCOME_CATEGORIES
+                    : LOAN_CATEGORIES
+                  ).map((c) => (
                     <option key={c.name} value={c.name}>
                       {c.name}
                     </option>
@@ -755,7 +959,11 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
                 </label>
                 <input
                   type="text"
-                  placeholder="Ví dụ: Cơm trưa, Đi chợ mua rau, Lương tháng..."
+                  placeholder={
+                    type === 'loan'
+                      ? 'Ví dụ: Cho mượn mua điện thoại, Vay đóng tiền nhà...'
+                      : 'Ví dụ: Cơm trưa, Đi chợ mua rau, Lương tháng...'
+                  }
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -794,10 +1002,14 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
+                  className={`w-full py-3 rounded-2xl text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 ${
+                    type === 'loan'
+                      ? 'bg-indigo-600 hover:bg-indigo-700'
+                      : 'bg-emerald-600 hover:bg-emerald-700'
+                  }`}
                 >
                   <Check className="w-4 h-4 stroke-[2.5]" />
-                  <span>Lưu Giao Dịch</span>
+                  <span>{type === 'loan' ? 'Lưu Khoản Vay Mượn' : 'Lưu Giao Dịch'}</span>
                 </button>
               </div>
             </form>

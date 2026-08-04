@@ -78,12 +78,15 @@ export type AppMode = 'kitchen' | 'finance';
 
 export interface ExpenseItem {
   id: string;
-  type: 'expense' | 'income';
+  type: 'expense' | 'income' | 'loan';
   amount: number;
   category: string;
   note: string;
   date: string;
   paymentMethod?: 'cash' | 'transfer' | 'card';
   createdAt: string;
+  loanType?: 'borrow' | 'lend'; // 'borrow' = đi vay, 'lend' = cho vay
+  isPaid?: boolean; // true = đã trả khoản vay
+  personName?: string; // Tên người vay / cho vay
 }
 

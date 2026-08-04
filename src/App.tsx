@@ -117,6 +117,13 @@ export default function App() {
     syncDeleteDoc('expenses', id);
   };
 
+  const handleUpdateExpense = (updatedItem: ExpenseItem) => {
+    setExpenses((prev) =>
+      prev.map((item) => (item.id === updatedItem.id ? updatedItem : item))
+    );
+    syncSaveDoc('expenses', updatedItem);
+  };
+
   // Save to LocalStorage
   useEffect(() => {
     localStorage.setItem('app_mode', appMode);
@@ -635,6 +642,7 @@ export default function App() {
                 expenses={expenses}
                 onAddExpense={handleAddExpense}
                 onDeleteExpense={handleDeleteExpense}
+                onUpdateExpense={handleUpdateExpense}
                 onSwitchMode={setAppMode}
               />
             ) : subView === 'recipe_detail' && selectedRecipe ? (
