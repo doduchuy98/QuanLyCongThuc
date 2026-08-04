@@ -35,6 +35,9 @@ import {
   CheckCircle2,
   Users,
   Handshake,
+  ChevronDown,
+  ChevronUp,
+  History,
 } from 'lucide-react';
 import { ExpenseItem, AppMode } from '../types';
 import { CuteDeleteModal } from '../components/CuteDeleteModal';
@@ -130,6 +133,21 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
     localStorage.setItem('app_lending_balance', lendingBalance.toString());
   }, [lendingBalance]);
 
+  // Loan management state
+  const [loanViewMode, setLoanViewMode] = useState<'grouped' | 'flat'>('grouped');
+  const [expandedPersons, setExpandedPersons] = useState<{ [key: string]: boolean }>({});
+
+  // Repayment Modal State (Trả trước / Trả bớt)
+  const [repaymentModalData, setRepaymentModalData] = useState<{
+    personName: string;
+    loanType: 'borrow' | 'lend';
+    remainingAmount: number;
+  } | null>(null);
+  const [repaymentAmount, setRepaymentAmount] = useState<string>('');
+  const [repaymentDate, setRepaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [repaymentMethod, setRepaymentMethod] = useState<'cash' | 'transfer' | 'card'>('transfer');
+  const [repaymentNote, setRepaymentNote] = useState<string>('');
+
   // Form State
   const [type, setType] = useState<'expense' | 'income' | 'loan'>('expense');
   const [loanType, setLoanType] = useState<'borrow' | 'lend'>('lend');
@@ -169,11 +187,204 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
     .filter((e) => e.type === 'expense')
     .reduce((sum, e) => sum + e.amount, 0);
 
-  // Current Net Balance = Income - Expense
-  const netBalance = totalIncome - totalExpense;
+  // 1. Khoản cho vay
+  let pendingLendAmount = 0; // Đang cho vay chưa thu hồi
+  let paidLendAmount = 0;    // Đã thu hồi / nhận lại tiền
 
-  // Main Balance = Current Net Balance + Lending Balance
-  const mainBalance = netBalance + lendingBalance;
+  // 2. Khoản đi vay
+  let pendingBorrowAmount = 0; // Đang mượn chưa trả
+  let paidBorrowAmount = 0;    // Đã đi trả nợ
+
+  expenses.filter((e) => e.type === 'loan').forEach((item) => {
+    if (item.loanType === 'lend') {
+      if (item.isRepayment) {
+        paidLendAmount += item.amount;
+      } else if (item.isPaid) {
+        paidLendAmount += item.amount;
+      } else {
+        pendingLendAmount += item.amount;
+      }
+    } else if (item.loanType === 'borrow') {
+      if (item.isRepayment) {
+        paidBorrowAmount += item.amount;
+      } else if (item.isPaid) {
+        paidBorrowAmount += item.amount;
+      } else {
+        pendingBorrowAmount += item.amount;
+      }
+    }
+  });
+
+  // Hiệu chỉnh nợ còn lại (Net Remaining)
+  const netPendingLend = Math.max(0, pendingLendAmount - paidLendAmount);
+  const netPendingBorrow = Math.max(0, pendingBorrowAmount - paidBorrowAmount);
+
+  // SỐ DƯ CHO VAY = Số dư cho vay cơ sở + Net Pending Lend
+  const totalLendingDisplay = lendingBalance + netPendingLend;
+
+  // SỐ DƯ HIỆN TẠI = (Thu nhập - Chi tiêu) - Cho vay chưa thu + Cho vay đã thu hồi + Đi vay chưa trả - Đi vay đã đi trả
+  const netBalance =
+    totalIncome -
+    totalExpense -
+    netPendingLend +
+    paidLendAmount +
+    netPendingBorrow -
+    paidBorrowAmount;
+
+  // Main Balance = Current Net Balance + Total Lending Balance
+  const mainBalance = netBalance + totalLendingDisplay;
+
+  // Grouped Loan Summaries by Person
+  interface PersonLoanSummary {
+    key: string;
+    personName: string;
+    loanType: 'borrow' | 'lend';
+    totalOriginal: number;
+    totalRepaid: number;
+    netRemaining: number;
+    isFullyPaid: boolean;
+    items: ExpenseItem[];
+  }
+
+  const personLoanSummaries = React.useMemo(() => {
+    const map = new Map<string, PersonLoanSummary>();
+
+    const loanItems = expenses.filter((e) => e.type === 'loan');
+
+    loanItems.forEach((item) => {
+      const pName = (item.personName && item.personName.trim()) ? item.personName.trim() : 'Khách chưa đặt tên';
+      const lType = item.loanType || 'lend';
+      const key = `${pName}___${lType}`;
+
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          personName: pName,
+          loanType: lType,
+          totalOriginal: 0,
+          totalRepaid: 0,
+          netRemaining: 0,
+          isFullyPaid: false,
+          items: [],
+        });
+      }
+
+      const summary = map.get(key)!;
+      summary.items.push(item);
+
+      if (item.isRepayment) {
+        summary.totalRepaid += item.amount;
+      } else {
+        summary.totalOriginal += item.amount;
+        if (item.isPaid) {
+          summary.totalRepaid += item.amount;
+        }
+      }
+    });
+
+    return Array.from(map.values()).map((summary) => {
+      summary.items.sort((a, b) => b.date.localeCompare(a.date));
+
+      const allMainPaid =
+        summary.items.filter((i) => !i.isRepayment).length > 0 &&
+        summary.items.filter((i) => !i.isRepayment).every((i) => i.isPaid);
+
+      const remaining = Math.max(0, summary.totalOriginal - summary.totalRepaid);
+      summary.netRemaining = allMainPaid ? 0 : remaining;
+      summary.isFullyPaid = summary.netRemaining === 0 || allMainPaid;
+
+      return summary;
+    }).filter((s) => {
+      if (!searchQuery) return true;
+      return s.personName.toLowerCase().includes(searchQuery.toLowerCase());
+    });
+  }, [expenses, searchQuery]);
+
+  // Handlers for Loan Card Actions
+  const handleOpenVayThem = (summary: PersonLoanSummary) => {
+    setType('loan');
+    setLoanType(summary.loanType);
+    setCategory(summary.loanType === 'lend' ? 'Cho vay' : 'Đi vay');
+    setPersonName(summary.personName);
+    setNote(summary.loanType === 'lend' ? 'Cho vay thêm' : 'Vay thêm');
+    setAmount('');
+    setIsAddModalOpen(true);
+  };
+
+  const handleOpenRepaymentModal = (summary: PersonLoanSummary) => {
+    setRepaymentModalData({
+      personName: summary.personName,
+      loanType: summary.loanType,
+      remainingAmount: summary.netRemaining,
+    });
+    setRepaymentAmount(summary.netRemaining > 0 ? summary.netRemaining.toString() : '');
+    setRepaymentDate(new Date().toISOString().split('T')[0]);
+    setRepaymentMethod('transfer');
+    setRepaymentNote(summary.loanType === 'lend' ? 'Trả trước / Thu hồi nợ' : 'Trả trước / Thanh toán nợ');
+  };
+
+  const handleConfirmRepayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!repaymentModalData) return;
+
+    const numAmount = parseFloat(repaymentAmount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      alert('Vui lòng nhập số tiền trả trước hợp lệ!');
+      return;
+    }
+
+    onAddExpense({
+      type: 'loan',
+      loanType: repaymentModalData.loanType,
+      isRepayment: true,
+      personName: repaymentModalData.personName,
+      amount: numAmount,
+      category: repaymentModalData.loanType === 'lend' ? 'Cho vay' : 'Đi vay',
+      note: repaymentNote.trim() || (repaymentModalData.loanType === 'lend' ? 'Trả trước / Thu hồi nợ' : 'Trả trước / Thanh toán nợ'),
+      date: repaymentDate,
+      paymentMethod: repaymentMethod,
+    });
+
+    // If repayment covers or exceeds remaining debt, mark unpaid loan items for this person as isPaid
+    if (numAmount >= repaymentModalData.remainingAmount && onUpdateExpense) {
+      const personItems = expenses.filter(
+        (item) =>
+          item.type === 'loan' &&
+          item.personName === repaymentModalData.personName &&
+          item.loanType === repaymentModalData.loanType &&
+          !item.isRepayment &&
+          !item.isPaid
+      );
+      personItems.forEach((item) => {
+        onUpdateExpense({ ...item, isPaid: true });
+      });
+    }
+
+    setRepaymentModalData(null);
+    setRepaymentAmount('');
+    setRepaymentNote('');
+  };
+
+  const handleSettleAllForPerson = (summary: PersonLoanSummary) => {
+    if (!onUpdateExpense) return;
+    const personItems = expenses.filter(
+      (item) =>
+        item.type === 'loan' &&
+        item.personName === summary.personName &&
+        item.loanType === summary.loanType &&
+        !item.isPaid
+    );
+    personItems.forEach((item) => {
+      onUpdateExpense({ ...item, isPaid: true });
+    });
+  };
+
+  const toggleExpandPerson = (key: string) => {
+    setExpandedPersons((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
 
   // Filtered expenses
   const filteredExpenses = expenses.filter((e) => {
@@ -314,7 +525,7 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
           <div className="text-[11px] font-medium text-slate-300 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-2">
             <span>Hiện tại: <strong className="text-emerald-400 font-bold">{formatCurrency(netBalance)}</strong></span>
             <span className="text-slate-500">•</span>
-            <span>Cho vay: <strong className="text-amber-400 font-bold">{formatCurrency(lendingBalance)}</strong></span>
+            <span>Cho vay: <strong className="text-amber-400 font-bold">{formatCurrency(totalLendingDisplay)}</strong></span>
           </div>
         </div>
 
@@ -355,7 +566,7 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
               </div>
             </div>
             <div className="text-base sm:text-lg font-black text-amber-800 tracking-tight">
-              {formatCurrency(lendingBalance)}
+              {formatCurrency(totalLendingDisplay)}
             </div>
           </div>
 
@@ -475,12 +686,40 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
         {/* Transaction History (2 Cols) */}
         <div className="lg:col-span-2 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
-            <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
-              <span>{activeTab === 'loan' ? 'Lịch sử vay mượn' : 'Lịch sử giao dịch'}</span>
-              <span className="text-xs font-semibold text-slate-400">
-                ({filteredExpenses.length} {activeTab === 'loan' ? 'khoản' : 'giao dịch'})
-              </span>
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
+                <span>{activeTab === 'loan' ? 'Lịch sử vay mượn' : 'Lịch sử giao dịch'}</span>
+                <span className="text-xs font-semibold text-slate-400">
+                  ({activeTab === 'loan' && loanViewMode === 'grouped' ? personLoanSummaries.length : filteredExpenses.length} {activeTab === 'loan' && loanViewMode === 'grouped' ? 'người' : 'giao dịch'})
+                </span>
+              </h3>
+
+              {/* View Switcher for Loan Tab */}
+              {activeTab === 'loan' && (
+                <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-[11px] font-bold">
+                  <button
+                    onClick={() => setLoanViewMode('grouped')}
+                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                      loanViewMode === 'grouped'
+                        ? 'bg-white text-indigo-700 shadow-2xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    👥 Theo người
+                  </button>
+                  <button
+                    onClick={() => setLoanViewMode('flat')}
+                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                      loanViewMode === 'flat'
+                        ? 'bg-white text-indigo-700 shadow-2xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    📋 Chi tiết
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Time Filter Dropdowns */}
             <div className="flex items-center gap-2 flex-wrap">
@@ -550,140 +789,374 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
             </div>
           </div>
 
-          {filteredExpenses.length === 0 ? (
-            <div className="bg-white rounded-3xl border border-dashed border-slate-200 p-8 text-center space-y-2">
-              <PiggyBank className="w-10 h-10 text-slate-300 mx-auto" />
-              <p className="text-sm font-bold text-slate-700">
-                {activeTab === 'loan' ? 'Chưa có khoản vay mượn nào' : 'Chưa có giao dịch nào'}
-              </p>
-              <p className="text-xs text-slate-400">
-                {activeTab === 'loan'
-                  ? 'Nhấn nút "Thêm khoản vay" để ghi lại khoản vay hoặc cho mượn mới!'
-                  : 'Nhấn nút "Thêm Thu/Chi" để ghi lại khoản thu chi mới!'}
-              </p>
-            </div>
-          ) : (
-            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
-              {filteredExpenses.map((item) => {
-                const Icon = getCategoryIcon(item.category);
-                const isInc = item.type === 'income';
-                const isLoan = item.type === 'loan';
+          {/* Render Grouped Person View if loan tab and loanViewMode === 'grouped' */}
+          {activeTab === 'loan' && loanViewMode === 'grouped' ? (
+            personLoanSummaries.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-dashed border-slate-200 p-8 text-center space-y-2">
+                <Handshake className="w-10 h-10 text-indigo-300 mx-auto" />
+                <p className="text-sm font-bold text-slate-700">Chưa có danh sách vay mượn nào</p>
+                <p className="text-xs text-slate-400">
+                  Nhấn nút "Thêm khoản vay" để ghi lại người vay hoặc cho mượn mới!
+                </p>
+                <button
+                  onClick={handleOpenAddLoan}
+                  className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-xs transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Thêm khoản vay đầu tiên</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {personLoanSummaries.map((summary) => {
+                  const isLend = summary.loanType === 'lend';
+                  const isExpanded = !!expandedPersons[summary.key];
 
-                return (
-                  <div
-                    key={item.id}
-                    className="p-3 sm:p-3.5 flex items-center justify-between gap-2 hover:bg-slate-50/80 transition-colors group"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-2xs ${
-                          isInc
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : isLoan
-                            ? item.loanType === 'borrow'
-                              ? 'bg-amber-100 text-amber-700 border border-amber-200'
-                              : 'bg-indigo-100 text-indigo-700 border border-indigo-200'
-                            : 'bg-rose-100 text-rose-700'
-                        }`}
-                      >
-                        <Icon className="w-4 h-4 stroke-[2]" />
-                      </div>
+                  return (
+                    <div
+                      key={summary.key}
+                      className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs overflow-hidden transition-all hover:border-indigo-200"
+                    >
+                      {/* Header section */}
+                      <div className="p-3.5 sm:p-4 bg-slate-50/50 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-10 h-10 rounded-2xl flex items-center justify-center font-extrabold text-sm shadow-2xs ${
+                              isLend
+                                ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                                : 'bg-amber-100 text-amber-800 border border-amber-200'
+                            }`}
+                          >
+                            {summary.personName.charAt(0).toUpperCase()}
+                          </div>
 
-                      <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
-                        <div className="flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap">
-                          <h4 className="font-bold text-slate-800 text-xs sm:text-sm truncate whitespace-nowrap">
-                            {item.note}
-                          </h4>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-extrabold text-slate-900 text-sm sm:text-base">
+                                {summary.personName}
+                              </h4>
+                              <span
+                                className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold ${
+                                  isLend
+                                    ? 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                                    : 'bg-amber-100 text-amber-800 border border-amber-200'
+                                }`}
+                              >
+                                {isLend ? 'Cho vay' : 'Đi vay'}
+                              </span>
+                            </div>
 
-                          {isLoan ? (
-                            <span
-                              className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold flex-shrink-0 whitespace-nowrap ${
-                                item.loanType === 'borrow'
-                                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                                  : 'bg-indigo-100 text-indigo-800 border border-indigo-300'
-                              }`}
-                            >
-                              {item.loanType === 'borrow' ? 'Đi vay' : 'Cho vay'}
+                            <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
+                              <span>
+                                {isLend ? 'Người mượn tiền của bạn' : 'Bạn mượn tiền người này'}
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Status pill */}
+                        <div className="flex items-center gap-2">
+                          {summary.isFullyPaid ? (
+                            <span className="px-3 py-1 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Đã tất toán</span>
                             </span>
                           ) : (
-                            <span
-                              className={`hidden sm:inline-block px-2 py-0.5 rounded-md text-[10px] font-extrabold flex-shrink-0 whitespace-nowrap ${
-                                isInc
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                  : 'bg-slate-100 text-slate-600 border border-slate-200'
-                              }`}
-                            >
-                              {item.category}
+                            <span className="px-3 py-1 rounded-xl text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                              <HandCoins className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Còn nợ: {formatCurrency(summary.netRemaining)}</span>
                             </span>
                           )}
+                        </div>
+                      </div>
 
-                          <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap flex-shrink-0 hidden md:inline">
-                            {item.date}
+                      {/* Metrics Breakdown */}
+                      <div className="p-3 sm:p-4 grid grid-cols-3 gap-2 bg-white text-center border-b border-slate-100">
+                        <div className="p-2 sm:p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
+                            Số tiền đã vay
+                          </span>
+                          <span className="text-xs sm:text-sm font-extrabold text-slate-800">
+                            {formatCurrency(summary.totalOriginal)}
                           </span>
                         </div>
 
-                        {/* Person / Partner name if loan */}
-                        {isLoan && item.personName && (
-                          <div className="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
-                            <Users className="w-3 h-3 text-slate-400 inline" />
-                            <span>Người giao dịch: <strong>{item.personName}</strong></span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                        <div className="p-2 sm:p-2.5 rounded-2xl bg-emerald-50/60 border border-emerald-100/80">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block mb-0.5">
+                            Trả trước / Thu hồi
+                          </span>
+                          <span className="text-xs sm:text-sm font-extrabold text-emerald-700">
+                            {formatCurrency(summary.totalRepaid)}
+                          </span>
+                        </div>
 
-                    <div className="flex items-center gap-2.5 flex-shrink-0">
-                      <div
-                        className={`text-xs sm:text-sm font-extrabold text-right whitespace-nowrap ${
-                          isInc
-                            ? 'text-emerald-600'
-                            : isLoan
-                            ? item.loanType === 'borrow'
-                              ? 'text-amber-600'
-                              : 'text-indigo-600'
-                            : 'text-rose-600'
-                        }`}
-                      >
-                        {isInc ? '+' : isLoan ? (item.loanType === 'borrow' ? '+' : '-') : '-'}{formatCurrency(item.amount)}
+                        <div
+                          className={`p-2 sm:p-2.5 rounded-2xl border ${
+                            summary.isFullyPaid
+                              ? 'bg-slate-50 border-slate-100 text-slate-400'
+                              : isLend
+                              ? 'bg-amber-50/60 border-amber-100 text-amber-800'
+                              : 'bg-indigo-50/60 border-indigo-100 text-indigo-800'
+                          }`}
+                        >
+                          <span className="text-[10px] font-bold uppercase tracking-wider block mb-0.5">
+                            Còn nợ lại
+                          </span>
+                          <span className="text-xs sm:text-sm font-black">
+                            {formatCurrency(summary.netRemaining)}
+                          </span>
+                        </div>
                       </div>
 
-                      {/* Loan Settled Button */}
-                      {isLoan && (
-                        <div className="flex items-center gap-1">
-                          {item.isPaid ? (
+                      {/* Quick Action Controls */}
+                      <div className="p-3 bg-slate-50/30 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {/* Vay thêm */}
+                          <button
+                            onClick={() => handleOpenVayThem(summary)}
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs transition-all flex items-center gap-1"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Vay thêm</span>
+                          </button>
+
+                          {/* Trả trước */}
+                          <button
+                            onClick={() => handleOpenRepaymentModal(summary)}
+                            disabled={summary.isFullyPaid}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${
+                              summary.isFullyPaid
+                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
+                            }`}
+                          >
+                            <Coins className="w-3.5 h-3.5" />
+                            <span>Trả trước</span>
+                          </button>
+
+                          {/* Tất toán */}
+                          {!summary.isFullyPaid && (
                             <button
-                              onClick={() => onUpdateExpense?.({ ...item, isPaid: false })}
-                              className="px-2.5 py-1 rounded-xl text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200 transition-all flex items-center gap-1"
-                              title="Bấm để chuyển về trạng thái Chưa trả"
+                              onClick={() => handleSettleAllForPerson(summary)}
+                              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-all flex items-center gap-1"
+                              title="Xác nhận tất toán toàn bộ số tiền còn nợ"
                             >
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>Đã trả</span>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => onUpdateExpense?.({ ...item, isPaid: true })}
-                              className="px-2.5 py-1 rounded-xl text-[11px] font-extrabold bg-amber-500 hover:bg-amber-600 text-white shadow-2xs transition-all flex items-center gap-1"
-                              title="Đánh dấu đã trả khoản vay"
-                            >
-                              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                              <span>Đã trả khoản vay</span>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Tất toán</span>
                             </button>
                           )}
                         </div>
-                      )}
 
-                      <button
-                        onClick={() => setExpToDelete(item)}
-                        className="w-7 h-7 rounded-full text-slate-300 hover:text-rose-500 hover:bg-rose-50 flex items-center justify-center transition-colors opacity-80 group-hover:opacity-100"
-                        title="Xóa giao dịch"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                        {/* Toggle Journal */}
+                        <button
+                          onClick={() => toggleExpandPerson(summary.key)}
+                          className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 transition-all flex items-center gap-1"
+                        >
+                          <History className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Nhật ký ({summary.items.length})</span>
+                          {isExpanded ? (
+                            <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+                          ) : (
+                            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Expanded items list */}
+                      {isExpanded && (
+                        <div className="bg-slate-50/80 border-t border-slate-100 p-3 divide-y divide-slate-100/80">
+                          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-1">
+                            Lịch sử đợt vay & trả tiền của người này
+                          </p>
+                          {summary.items.map((item) => (
+                            <div
+                              key={item.id}
+                              className="py-2 flex items-center justify-between gap-2 hover:bg-white/60 rounded-xl px-2 transition-colors"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-bold text-slate-800">
+                                    {item.note}
+                                  </span>
+                                  {item.isRepayment && (
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                      Trả trước
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-slate-400 font-medium">
+                                  {item.date} {item.paymentMethod ? `• ${item.paymentMethod === 'transfer' ? 'Chuyển khoản' : item.paymentMethod === 'cash' ? 'Tiền mặt' : 'Thẻ'}` : ''}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`text-xs font-extrabold ${
+                                    item.isRepayment
+                                      ? 'text-emerald-600'
+                                      : isLend
+                                      ? 'text-amber-600'
+                                      : 'text-indigo-600'
+                                  }`}
+                                >
+                                  {item.isRepayment ? '+' : '-'}{formatCurrency(item.amount)}
+                                </span>
+                                <button
+                                  onClick={() => setExpToDelete(item)}
+                                  className="text-slate-300 hover:text-rose-500 p-1 rounded-lg transition-colors"
+                                  title="Xóa đợt này"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )
+          ) : (
+            /* Flat itemized list */
+            filteredExpenses.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-dashed border-slate-200 p-8 text-center space-y-2">
+                <PiggyBank className="w-10 h-10 text-slate-300 mx-auto" />
+                <p className="text-sm font-bold text-slate-700">
+                  {activeTab === 'loan' ? 'Chưa có khoản vay mượn nào' : 'Chưa có giao dịch nào'}
+                </p>
+                <p className="text-xs text-slate-400">
+                  {activeTab === 'loan'
+                    ? 'Nhấn nút "Thêm khoản vay" để ghi lại khoản vay hoặc cho mượn mới!'
+                    : 'Nhấn nút "Thêm Thu/Chi" để ghi lại khoản thu chi mới!'}
+                </p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
+                {filteredExpenses.map((item) => {
+                  const Icon = getCategoryIcon(item.category);
+                  const isInc = item.type === 'income';
+                  const isLoan = item.type === 'loan';
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-3 sm:p-3.5 flex items-center justify-between gap-2 hover:bg-slate-50/80 transition-colors group"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-2xs ${
+                            isInc
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : isLoan
+                              ? item.loanType === 'borrow'
+                                ? 'bg-amber-100 text-amber-700 border border-amber-200'
+                                : 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                              : 'bg-rose-100 text-rose-700'
+                          }`}
+                        >
+                          <Icon className="w-4 h-4 stroke-[2]" />
+                        </div>
+
+                        <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
+                          <div className="flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap">
+                            <h4 className="font-bold text-slate-800 text-xs sm:text-sm truncate whitespace-nowrap">
+                              {item.note}
+                            </h4>
+
+                            {isLoan ? (
+                              <span
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold flex-shrink-0 whitespace-nowrap ${
+                                  item.isRepayment
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                    : item.loanType === 'borrow'
+                                    ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                    : 'bg-indigo-100 text-indigo-800 border border-indigo-300'
+                                }`}
+                              >
+                                {item.isRepayment ? 'Trả trước' : item.loanType === 'borrow' ? 'Đi vay' : 'Cho vay'}
+                              </span>
+                            ) : (
+                              <span
+                                className={`hidden sm:inline-block px-2 py-0.5 rounded-md text-[10px] font-extrabold flex-shrink-0 whitespace-nowrap ${
+                                  isInc
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                }`}
+                              >
+                                {item.category}
+                              </span>
+                            )}
+
+                            <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap flex-shrink-0 hidden md:inline">
+                              {item.date}
+                            </span>
+                          </div>
+
+                          {/* Person / Partner name if loan */}
+                          {isLoan && item.personName && (
+                            <div className="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
+                              <Users className="w-3 h-3 text-slate-400 inline" />
+                              <span>Người giao dịch: <strong>{item.personName}</strong></span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2.5 flex-shrink-0">
+                        <div
+                          className={`text-xs sm:text-sm font-extrabold text-right whitespace-nowrap ${
+                            isInc || item.isRepayment
+                              ? 'text-emerald-600'
+                              : isLoan
+                              ? item.loanType === 'borrow'
+                                ? 'text-amber-600'
+                                : 'text-indigo-600'
+                              : 'text-rose-600'
+                          }`}
+                        >
+                          {isInc || item.isRepayment ? '+' : isLoan ? (item.loanType === 'borrow' ? '+' : '-') : '-'}{formatCurrency(item.amount)}
+                        </div>
+
+                        {/* Loan Settled Button */}
+                        {isLoan && (
+                          <div className="flex items-center gap-1">
+                            {item.isPaid ? (
+                              <button
+                                onClick={() => onUpdateExpense?.({ ...item, isPaid: false })}
+                                className="px-2.5 py-1 rounded-xl text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200 transition-all flex items-center gap-1"
+                                title="Bấm để chuyển về trạng thái Chưa trả"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Đã trả</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => onUpdateExpense?.({ ...item, isPaid: true })}
+                                className="px-2.5 py-1 rounded-xl text-[11px] font-extrabold bg-amber-500 hover:bg-amber-600 text-white shadow-2xs transition-all flex items-center gap-1"
+                                title="Đánh dấu đã trả khoản vay"
+                              >
+                                <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                                <span>Đã trả khoản vay</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        <button
+                          onClick={() => setExpToDelete(item)}
+                          className="w-7 h-7 rounded-full text-slate-300 hover:text-rose-500 hover:bg-rose-50 flex items-center justify-center transition-colors opacity-80 group-hover:opacity-100"
+                          title="Xóa giao dịch"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
           )}
         </div>
 
@@ -1010,6 +1483,116 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
                 >
                   <Check className="w-4 h-4 stroke-[2.5]" />
                   <span>{type === 'loan' ? 'Lưu Khoản Vay Mượn' : 'Lưu Giao Dịch'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Trả Trước / Thanh Toán Từng Phần */}
+      {repaymentModalData && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                  <Coins className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base">
+                    Trả Trước Khoản Vay
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {repaymentModalData.personName} ({repaymentModalData.loanType === 'lend' ? 'Thu hồi nợ cho vay' : 'Thanh toán nợ đi vay'})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setRepaymentModalData(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmRepayment} className="space-y-3.5">
+              <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-3 flex items-center justify-between">
+                <span className="text-xs font-bold text-amber-800">Còn nợ hiện tại:</span>
+                <span className="text-sm font-black text-amber-900">
+                  {formatCurrency(repaymentModalData.remainingAmount)}
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Số tiền trả trước (đ) <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  placeholder="Ví dụ: 500000"
+                  value={repaymentAmount}
+                  onChange={(e) => setRepaymentAmount(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Ngày thanh toán
+                  </label>
+                  <input
+                    type="date"
+                    value={repaymentDate}
+                    onChange={(e) => setRepaymentDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Hình thức
+                  </label>
+                  <select
+                    value={repaymentMethod}
+                    onChange={(e) => setRepaymentMethod(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="transfer">Chuyển khoản</option>
+                    <option value="cash">Tiền mặt</option>
+                    <option value="card">Thẻ</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Ghi chú đợt trả
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: Trả trước đợt 1, CK MoMo..."
+                  value={repaymentNote}
+                  onChange={(e) => setRepaymentNote(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setRepaymentModalData(null)}
+                  className="flex-1 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm transition-all"
+                >
+                  Xác nhận trả trước
                 </button>
               </div>
             </form>

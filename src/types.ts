@@ -86,7 +86,8 @@ export interface ExpenseItem {
   paymentMethod?: 'cash' | 'transfer' | 'card';
   createdAt: string;
   loanType?: 'borrow' | 'lend'; // 'borrow' = đi vay, 'lend' = cho vay
-  isPaid?: boolean; // true = đã trả khoản vay
+  isPaid?: boolean; // true = đã trả khoản vay / tất toán
+  isRepayment?: boolean; // true = đợt trả trước / thanh toán bớt
   personName?: string; // Tên người vay / cho vay
 }
 
