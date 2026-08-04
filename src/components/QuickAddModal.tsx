@@ -5,7 +5,7 @@ interface QuickAddModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddRecipe: () => void;
-  onAddCategory: () => void;
+  onAddCategory?: () => void;
   onOpenUnitConverter: () => void;
   onOpenSettings: () => void;
 }
@@ -55,20 +55,6 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             </div>
             <span className="font-bold text-slate-800 text-sm">Thêm công thức</span>
             <span className="text-[11px] text-slate-500 mt-0.5">Tạo món ăn mới</span>
-          </button>
-
-          <button
-            onClick={() => {
-              onClose();
-              onAddCategory();
-            }}
-            className="flex flex-col items-start p-4 rounded-2xl bg-gradient-to-br from-[#AEE9FF]/50 to-[#F0F9FF] border border-sky-200/50 hover:shadow-md transition-all text-left group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-sky-400 text-white flex items-center justify-center mb-2 shadow-sm group-hover:scale-110 transition-transform">
-              <LayoutGrid className="w-5 h-5" />
-            </div>
-            <span className="font-bold text-slate-800 text-sm">Thêm danh mục</span>
-            <span className="text-[11px] text-slate-500 mt-0.5">Phân loại món</span>
           </button>
 
           <button

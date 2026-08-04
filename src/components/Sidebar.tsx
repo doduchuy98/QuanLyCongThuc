@@ -36,7 +36,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'home' as ActiveTab, label: 'Trang chủ', icon: Home, count: null },
     { id: 'recipes' as ActiveTab, label: 'Công thức', icon: ChefHat, count: recipesCount },
     { id: 'browser' as ActiveTab, label: 'Trang duyệt web', icon: Globe, count: null },
-    { id: 'categories' as ActiveTab, label: 'Danh mục', icon: LayoutGrid, count: categoriesCount },
     { id: 'settings' as ActiveTab, label: 'Cài đặt & Dữ liệu', icon: Settings, count: null },
   ];
 

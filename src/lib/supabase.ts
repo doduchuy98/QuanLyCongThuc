@@ -2,9 +2,6 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const metaEnv = (import.meta as any).env || {};
 
-const supabaseUrl = (metaEnv.VITE_SUPABASE_URL || '').trim();
-const supabaseAnonKey = (metaEnv.VITE_SUPABASE_ANON_KEY || '').trim();
-
 function isValidHttpUrl(str: string) {
   try {
     const url = new URL(str);
@@ -14,27 +11,70 @@ function isValidHttpUrl(str: string) {
   }
 }
 
-export const isSupabaseConfigured = Boolean(
-  supabaseUrl &&
-  supabaseAnonKey &&
-  isValidHttpUrl(supabaseUrl) &&
-  !supabaseUrl.includes('your-project') &&
-  !supabaseUrl.includes('YOUR_SUPABASE')
-);
+export function getSupabaseConfig() {
+  const url = (
+    metaEnv.VITE_SUPABASE_URL ||
+    localStorage.getItem('app_supabase_url') ||
+    ''
+  ).trim();
+  const key = (
+    metaEnv.VITE_SUPABASE_ANON_KEY ||
+    localStorage.getItem('app_supabase_key') ||
+    ''
+  ).trim();
 
-let client: SupabaseClient | null = null;
-if (isSupabaseConfigured) {
+  const isConfigured = Boolean(
+    url &&
+    key &&
+    isValidHttpUrl(url) &&
+    !url.includes('your-project') &&
+    !url.includes('YOUR_SUPABASE')
+  );
+
+  return { url, key, isConfigured };
+}
+
+export function saveSupabaseConfig(url: string, key: string) {
+  if (url) localStorage.setItem('app_supabase_url', url.trim());
+  else localStorage.removeItem('app_supabase_url');
+
+  if (key) localStorage.setItem('app_supabase_key', key.trim());
+  else localStorage.removeItem('app_supabase_key');
+}
+
+export function clearSupabaseConfig() {
+  localStorage.removeItem('app_supabase_url');
+  localStorage.removeItem('app_supabase_key');
+}
+
+let cachedClient: SupabaseClient | null = null;
+let cachedClientUrl = '';
+let cachedClientKey = '';
+
+export function getSupabaseClient(): SupabaseClient | null {
+  const { url, key, isConfigured } = getSupabaseConfig();
+  if (!isConfigured) return null;
+
+  if (cachedClient && cachedClientUrl === url && cachedClientKey === key) {
+    return cachedClient;
+  }
+
   try {
-    client = createClient(supabaseUrl, supabaseAnonKey, {
+    cachedClient = createClient(url, key, {
       auth: {
         persistSession: true,
       },
     });
+    cachedClientUrl = url;
+    cachedClientKey = key;
+    return cachedClient;
   } catch (err) {
     console.warn('[Supabase Init Warning]', err);
-    client = null;
+    return null;
   }
 }
 
-export const supabase = client;
+export const isSupabaseConfigured = Boolean(getSupabaseConfig().isConfigured);
+export const supabase = getSupabaseClient();
+
 

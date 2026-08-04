@@ -13,7 +13,6 @@ import { RecipeDetailView } from './views/RecipeDetailView';
 import { AddEditRecipeView } from './views/AddEditRecipeView';
 import { IngredientsView } from './views/IngredientsView';
 import { AddIngredientView } from './views/AddIngredientView';
-import { CategoriesView } from './views/CategoriesView';
 import { SettingsView } from './views/SettingsView';
 import { BrowserView } from './views/BrowserView';
 
@@ -225,11 +224,23 @@ export default function App() {
       () => setIsCloudSynced(false)
     );
 
+    const unsubExpenses = subscribeCollection<ExpenseItem>(
+      'expenses',
+      (remoteExp) => {
+        if (remoteExp && remoteExp.length > 0) {
+          setExpenses(remoteExp);
+        }
+        setIsCloudSynced(true);
+      },
+      () => setIsCloudSynced(false)
+    );
+
     return () => {
       unsubRecipes();
       unsubIngredients();
       unsubCategories();
       unsubShopping();
+      unsubExpenses();
     };
   }, []);
 
@@ -658,7 +669,6 @@ export default function App() {
                     categories={categories}
                     totalIngredientsCount={ingredients.length}
                     onNavigateToRecipes={() => handleTabChange('recipes')}
-                    onNavigateToCategories={() => handleTabChange('categories')}
                     onNavigateToBrowser={() => handleTabChange('browser')}
                     onSwitchToExpense={() => setAppMode('finance')}
                     onSelectRecipe={handleSelectRecipe}
@@ -694,21 +704,6 @@ export default function App() {
                     onAddIngredient={handleStartAddIngredient}
                     onSelectIngredient={handleSelectIngredientToEdit}
                     onDeleteIngredient={handleDeleteIngredient}
-                  />
-                )}
-
-                {activeTab === 'categories' && (
-                  <CategoriesView
-                    categories={categories}
-                    recipes={recipes}
-                    isAdmin={isAdmin}
-                    onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
-                    onSelectCategoryFilter={(catName) => {
-                      setSelectedRecipeCategory(catName);
-                      setActiveTab('recipes');
-                    }}
-                    onAddCategory={handleAddCategory}
-                    onDeleteCategory={handleDeleteCategory}
                   />
                 )}
 
@@ -748,10 +743,6 @@ export default function App() {
           isOpen={isQuickAddOpen}
           onClose={() => setIsQuickAddOpen(false)}
           onAddRecipe={handleStartAddRecipe}
-          onAddCategory={() => {
-            setActiveTab('categories');
-            setSubView('none');
-          }}
           onOpenUnitConverter={() => setIsUnitConverterOpen(true)}
           onOpenSettings={() => {
             setActiveTab('settings');

@@ -7,7 +7,7 @@ interface HomeViewProps {
   categories: Category[];
   totalIngredientsCount?: number;
   onNavigateToRecipes: () => void;
-  onNavigateToCategories: () => void;
+  onNavigateToCategories?: () => void;
   onNavigateToBrowser?: () => void;
   onSwitchToExpense?: () => void;
   onSelectRecipe: (recipeId: string) => void;
@@ -22,7 +22,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onSwitchToExpense,
   onSelectRecipe,
 }) => {
-
   const totalRecipes = recipes.length;
   const totalCategories = categories.length;
   const updatingCount = recipes.filter((r) => r.isActive).length;
@@ -113,60 +112,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         </button>
       )}
-
-      {/* 3 Stats Cards Grid */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
-        {/* Card 1: Công thức */}
-        <button
-          onClick={onNavigateToRecipes}
-          className="flex items-center justify-between p-2.5 sm:p-3 rounded-2xl bg-[#D9F7BE]/35 border border-emerald-200/60 text-left hover:bg-[#D9F7BE]/60 transition-all group"
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-700 flex items-center justify-center flex-shrink-0">
-              <Utensils className="w-4 h-4 stroke-[2.2]" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[11px] font-semibold text-slate-500 block truncate">Công thức</span>
-              <span className="text-base font-black text-emerald-900 leading-none">{totalRecipes}</span>
-            </div>
-          </div>
-          <ChevronRight className="w-4 h-4 text-emerald-600/60 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
-        </button>
-
-        {/* Card 2: Danh mục */}
-        <button
-          onClick={onNavigateToCategories}
-          className="flex items-center justify-between p-2.5 sm:p-3 rounded-2xl bg-[#AEE9FF]/35 border border-sky-200/60 text-left hover:bg-[#AEE9FF]/60 transition-all group"
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-700 flex items-center justify-center flex-shrink-0">
-              <LayoutGrid className="w-4 h-4 stroke-[2.2]" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[11px] font-semibold text-slate-500 block truncate">Danh mục</span>
-              <span className="text-base font-black text-sky-900 leading-none">{totalCategories}</span>
-            </div>
-          </div>
-          <ChevronRight className="w-4 h-4 text-sky-600/60 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
-        </button>
-
-        {/* Card 3: Hoạt động */}
-        <button
-          onClick={onNavigateToRecipes}
-          className="flex items-center justify-between p-2.5 sm:p-3 rounded-2xl bg-[#FFD9E8]/45 border border-pink-200 text-left hover:bg-[#FFD9E8]/70 transition-all group"
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-pink-500/20 text-pink-700 flex items-center justify-center flex-shrink-0">
-              <RefreshCw className="w-4 h-4 stroke-[2.2]" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[11px] font-semibold text-slate-500 block truncate">Hoạt động</span>
-              <span className="text-base font-black text-pink-900 leading-none">{updatingCount}</span>
-            </div>
-          </div>
-          <ChevronRight className="w-4 h-4 text-pink-600/60 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
-        </button>
-      </div>
 
       {/* Section: Công thức mới cập nhật */}
       <div className="pt-2">

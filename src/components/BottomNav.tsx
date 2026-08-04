@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, ChefHat, LayoutGrid, Globe, Plus } from 'lucide-react';
+import { Home, ChefHat, Settings, Globe, Plus } from 'lucide-react';
 import { ActiveTab } from '../types';
 
 interface BottomNavProps {
@@ -8,6 +8,7 @@ interface BottomNavProps {
   onQuickAddClick?: () => void;
   isAdmin?: boolean;
   onOpenAdminLogin?: () => void;
+  shoppingListUnboughtCount?: number;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
@@ -24,7 +25,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
   const rightTabs = [
     { id: 'browser' as ActiveTab, label: 'Duyệt web', icon: Globe },
-    { id: 'categories' as ActiveTab, label: 'Danh mục', icon: LayoutGrid },
+    { id: 'settings' as ActiveTab, label: 'Cài đặt', icon: Settings },
   ];
 
   return (
