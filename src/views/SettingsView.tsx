@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Download, Upload, RotateCcw, Smartphone, ShieldCheck, HardDrive, Wifi, WifiOff, Database, Sparkles, CheckCircle2, Lock, KeyRound, Globe } from 'lucide-react';
-import { Category, IngredientItem, Recipe } from '../types';
+import { Download, Upload, RotateCcw, Smartphone, ShieldCheck, HardDrive, Wifi, WifiOff, Database, Sparkles, CheckCircle2, Lock, KeyRound, Globe, FileSpreadsheet } from 'lucide-react';
+import { Category, ExpenseItem, IngredientItem, Recipe } from '../types';
 import { useOffline } from '../hooks/useOffline';
 
 interface SettingsViewProps {
   recipes: Recipe[];
   ingredients: IngredientItem[];
   categories: Category[];
+  expenses?: ExpenseItem[];
   isAdmin?: boolean;
   onOpenAdminLogin?: () => void;
   onLogoutAdmin?: () => void;
@@ -19,6 +20,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   recipes,
   ingredients,
   categories,
+  expenses = [],
   isAdmin,
   onOpenAdminLogin,
   onLogoutAdmin,
@@ -49,6 +51,48 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     a.href = url;
     a.download = `cong-thuc-mon-an-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportExpenseCsv = () => {
+    if (!expenses || expenses.length === 0) {
+      alert('Chưa có lịch sử chi tiêu nào để xuất!');
+      return;
+    }
+
+    const headers = ['Mã giao dịch', 'Ngày', 'Loại', 'Danh mục', 'Ghi chú', 'Số tiền (VNĐ)', 'Hình thức thanh toán'];
+
+    const rows = expenses.map((item) => {
+      const typeText = item.type === 'income' ? 'Thu nhập' : 'Chi tiêu';
+      const payText =
+        item.paymentMethod === 'cash'
+          ? 'Tiền mặt'
+          : item.paymentMethod === 'card'
+          ? 'Thẻ'
+          : 'Chuyển khoản';
+
+      return [
+        `"${(item.id || '').replace(/"/g, '""')}"`,
+        `"${(item.date || '').replace(/"/g, '""')}"`,
+        `"${typeText}"`,
+        `"${(item.category || '').replace(/"/g, '""')}"`,
+        `"${(item.note || '').replace(/"/g, '""')}"`,
+        item.amount,
+        `"${payText}"`,
+      ].join(',');
+    });
+
+    // \uFEFF Byte Order Mark for UTF-8 compatibility with Excel
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const today = new Date().toISOString().slice(0, 10);
+    a.download = `lich-su-chi-tieu-${today}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
@@ -208,6 +252,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </h3>
 
         <div className="space-y-2">
+          <button
+            onClick={handleExportExpenseCsv}
+            className="w-full p-3 rounded-2xl bg-emerald-50 border border-emerald-200/90 hover:bg-emerald-100/80 transition-colors flex items-center justify-between text-emerald-900 shadow-2xs"
+          >
+            <div className="flex items-center gap-2.5">
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              <div className="text-left">
+                <span className="text-xs font-bold block">Xuất dữ liệu chi tiêu (CSV - Excel)</span>
+                <span className="text-[10px] text-emerald-700 font-medium">Hỗ trợ tiếng Việt đầy đủ ({expenses.length} giao dịch)</span>
+              </div>
+            </div>
+            <span className="text-[11px] font-extrabold text-emerald-700 bg-white px-2.5 py-1 rounded-xl border border-emerald-200 shadow-2xs">
+              Tải CSV
+            </span>
+          </button>
+
           <button
             onClick={handleExportJson}
             className="w-full p-3 rounded-2xl bg-slate-50 border border-slate-200 hover:bg-pink-50 hover:border-pink-200 transition-colors flex items-center justify-between"

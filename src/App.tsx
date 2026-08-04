@@ -717,6 +717,7 @@ export default function App() {
                     recipes={recipes}
                     ingredients={ingredients}
                     categories={categories}
+                    expenses={expenses}
                     isAdmin={isAdmin}
                     onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
                     onLogoutAdmin={handleAdminLogout}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Wallet,
   TrendingUp,
@@ -28,6 +28,10 @@ import {
   PiggyBank,
   ChevronRight,
   RefreshCw,
+  HandCoins,
+  Pencil,
+  Coins,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { ExpenseItem, AppMode } from '../types';
 import { CuteDeleteModal } from '../components/CuteDeleteModal';
@@ -65,8 +69,53 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'expense' | 'income'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>('all');
+  const [selectedYearFilter, setSelectedYearFilter] = useState<string>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [expToDelete, setExpToDelete] = useState<ExpenseItem | null>(null);
+
+  // Helper to parse year and month from date string
+  const parseYearMonth = (dateStr: string) => {
+    if (!dateStr) return { year: '', month: '' };
+    if (dateStr.includes('-')) {
+      const parts = dateStr.split('-');
+      if (parts.length >= 2) {
+        return { year: parts[0], month: parts[1].padStart(2, '0') };
+      }
+    } else if (dateStr.includes('/')) {
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        return { year: parts[2], month: parts[1].padStart(2, '0') };
+      }
+    }
+    return { year: '', month: '' };
+  };
+
+  // Extract available years from expenses
+  const availableYears: string[] = Array.from(
+    new Set<string>(
+      expenses
+        .map((e) => parseYearMonth(e.date).year)
+        .filter((y): y is string => Boolean(y) && y.length === 4)
+    )
+  ).sort((a: string, b: string) => b.localeCompare(a));
+
+  const currentYear = new Date().getFullYear().toString();
+  if (!availableYears.includes(currentYear)) {
+    availableYears.unshift(currentYear);
+  }
+
+  // Lending Balance State (Money lent to others)
+  const [lendingBalance, setLendingBalance] = useState<number>(() => {
+    const saved = localStorage.getItem('app_lending_balance');
+    return saved !== null ? parseFloat(saved) || 0 : 2500000;
+  });
+  const [isEditLendingModalOpen, setIsEditLendingModalOpen] = useState(false);
+  const [tempLendingInput, setTempLendingInput] = useState<string>('');
+
+  useEffect(() => {
+    localStorage.setItem('app_lending_balance', lendingBalance.toString());
+  }, [lendingBalance]);
 
   // Form State
   const [type, setType] = useState<'expense' | 'income'>('expense');
@@ -85,7 +134,11 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
     .filter((e) => e.type === 'expense')
     .reduce((sum, e) => sum + e.amount, 0);
 
+  // Current Net Balance = Income - Expense
   const netBalance = totalIncome - totalExpense;
+
+  // Main Balance = Current Net Balance + Lending Balance
+  const mainBalance = netBalance + lendingBalance;
 
   // Filtered expenses
   const filteredExpenses = expenses.filter((e) => {
@@ -93,16 +146,63 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
     const matchesQuery =
       e.note.toLowerCase().includes(searchQuery.toLowerCase()) ||
       e.category.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesTab && matchesQuery;
+
+    const { year, month } = parseYearMonth(e.date);
+    const matchesYear = selectedYearFilter === 'all' || year === selectedYearFilter;
+    const matchesMonth = selectedMonthFilter === 'all' || month === selectedMonthFilter;
+
+    return matchesTab && matchesQuery && matchesYear && matchesMonth;
   });
 
-  // Calculate expenses by category for breakdown chart
+  // Calculate expenses by category for breakdown chart (based on filtered list or all)
   const categoryTotals: { [cat: string]: number } = {};
-  expenses
+  filteredExpenses
     .filter((e) => e.type === 'expense')
     .forEach((e) => {
       categoryTotals[e.category] = (categoryTotals[e.category] || 0) + e.amount;
     });
+
+  const handleExportCsv = () => {
+    if (!filteredExpenses || filteredExpenses.length === 0) {
+      alert('Không có dữ liệu giao dịch để xuất!');
+      return;
+    }
+
+    const headers = ['Mã giao dịch', 'Ngày', 'Loại', 'Danh mục', 'Ghi chú', 'Số tiền (VNĐ)', 'Hình thức thanh toán'];
+
+    const rows = filteredExpenses.map((item) => {
+      const typeText = item.type === 'income' ? 'Thu nhập' : 'Chi tiêu';
+      const payText =
+        item.paymentMethod === 'cash'
+          ? 'Tiền mặt'
+          : item.paymentMethod === 'card'
+          ? 'Thẻ'
+          : 'Chuyển khoản';
+
+      return [
+        `"${(item.id || '').replace(/"/g, '""')}"`,
+        `"${(item.date || '').replace(/"/g, '""')}"`,
+        `"${typeText}"`,
+        `"${(item.category || '').replace(/"/g, '""')}"`,
+        `"${(item.note || '').replace(/"/g, '""')}"`,
+        item.amount,
+        `"${payText}"`,
+      ].join(',');
+    });
+
+    // \uFEFF Byte Order Mark for UTF-8 compatibility with Excel
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const today = new Date().toISOString().slice(0, 10);
+    a.download = `lich-su-chi-tieu-${today}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const handleSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,6 +227,13 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
     setIsAddModalOpen(false);
   };
 
+  const handleSaveLendingBalance = (e: React.FormEvent) => {
+    e.preventDefault();
+    const val = parseFloat(tempLendingInput.replace(/[^0-9]/g, ''));
+    setLendingBalance(isNaN(val) ? 0 : val);
+    setIsEditLendingModalOpen(false);
+  };
+
   const getCategoryIcon = (catName: string) => {
     const foundExp = EXPENSE_CATEGORIES.find((c) => c.name === catName);
     if (foundExp) return foundExp.icon;
@@ -137,84 +244,93 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
 
   return (
     <div className="p-4 space-y-5 pb-28 max-w-5xl mx-auto animate-fade-in">
-      {/* Top App Mode Switch Banner */}
-      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 text-white p-4 sm:p-5 rounded-3xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 shadow-2xs">
-            <PiggyBank className="w-6 h-6 text-white stroke-[2.2]" />
-          </div>
+
+      {/* Financial Overview Cards Section */}
+      <div className="space-y-3">
+        {/* Main Balance Hero Bar */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-sm border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-md bg-emerald-400/30 text-emerald-100 font-extrabold text-[10px] border border-white/20 uppercase tracking-wide">
-                Đang mở
+            <div className="flex items-center gap-2 text-xs font-semibold text-indigo-300">
+              <Coins className="w-4 h-4 text-amber-400" />
+              <span>Số dư chính (Tổng tài sản)</span>
+            </div>
+            <div className="text-2xl sm:text-3xl font-black tracking-tight text-white mt-1">
+              {formatCurrency(mainBalance)}
+            </div>
+          </div>
+          <div className="text-[11px] font-medium text-slate-300 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-2">
+            <span>Hiện tại: <strong className="text-emerald-400 font-bold">{formatCurrency(netBalance)}</strong></span>
+            <span className="text-slate-500">•</span>
+            <span>Cho vay: <strong className="text-amber-400 font-bold">{formatCurrency(lendingBalance)}</strong></span>
+          </div>
+        </div>
+
+        {/* 4 Minimal Stat Cards Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Card 1: Số dư hiện tại */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex flex-col justify-between space-y-2 hover:border-emerald-300 transition-colors">
+            <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
+              <span>Số dư hiện tại</span>
+              <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <Wallet className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <div className="text-base sm:text-lg font-black text-emerald-700 tracking-tight">
+              {formatCurrency(netBalance)}
+            </div>
+          </div>
+
+          {/* Card 2: Số dư cho vay */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex flex-col justify-between space-y-2 hover:border-amber-300 transition-colors">
+            <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
+              <span className="flex items-center gap-1.5">
+                <span>Số dư cho vay</span>
+                <button
+                  onClick={() => {
+                    setTempLendingInput(lendingBalance.toString());
+                    setIsEditLendingModalOpen(true);
+                  }}
+                  className="text-[10px] font-bold text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 px-1.5 py-0.5 rounded-md transition-colors"
+                  title="Chỉnh sửa số dư cho vay"
+                >
+                  <Pencil className="w-2.5 h-2.5 inline mr-0.5" />
+                  Sửa
+                </button>
               </span>
-              <h2 className="text-base sm:text-lg font-black tracking-tight leading-snug">
-                Quản Lý Chi Tiêu Cá Nhân
-              </h2>
+              <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <HandCoins className="w-3.5 h-3.5" />
+              </div>
             </div>
-            <p className="text-xs text-emerald-100 font-medium mt-0.5">
-              Sổ thu chi thông minh, quản lý ngân sách & tiết kiệm hàng tháng
-            </p>
-          </div>
-        </div>
-
-        {/* MODE SWITCH BUTTON */}
-        <button
-          onClick={() => onSwitchMode('kitchen')}
-          className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-white text-slate-800 hover:bg-slate-100 font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 active:scale-95 group"
-        >
-          <Utensils className="w-4 h-4 text-[#FF8FB8] group-hover:rotate-12 transition-transform" />
-          <span>Chuyển sang Quản lý Bếp 🍳</span>
-        </button>
-      </div>
-
-      {/* Financial Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {/* Balance Card */}
-        <div className="p-4 rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white shadow-md border border-slate-700/60 relative overflow-hidden">
-          <div className="flex items-center justify-between text-slate-300 text-xs font-bold mb-1">
-            <span>Số dư hiện tại</span>
-            <Wallet className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div className="text-xl sm:text-2xl font-black tracking-tight text-white">
-            {formatCurrency(netBalance)}
-          </div>
-          <p className="text-[11px] text-slate-400 mt-1 font-medium">
-            Tích lũy từ thu nhập & chi tiêu
-          </p>
-          <div className="absolute -bottom-4 -right-4 w-20 h-20 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
-        </div>
-
-        {/* Total Income Card */}
-        <div className="p-4 rounded-3xl bg-white border border-emerald-100 shadow-2xs relative overflow-hidden">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-bold mb-1">
-            <span>Tổng Thu Nhập</span>
-            <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
-              <ArrowDownLeft className="w-4 h-4" />
+            <div className="text-base sm:text-lg font-black text-amber-800 tracking-tight">
+              {formatCurrency(lendingBalance)}
             </div>
           </div>
-          <div className="text-lg sm:text-xl font-extrabold text-emerald-600">
-            +{formatCurrency(totalIncome)}
-          </div>
-          <p className="text-[11px] text-slate-400 mt-1 font-medium">
-            Lương, thưởng & khoản thu khác
-          </p>
-        </div>
 
-        {/* Total Expense Card */}
-        <div className="p-4 rounded-3xl bg-white border border-rose-100 shadow-2xs relative overflow-hidden">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-bold mb-1">
-            <span>Tổng Chi Tiêu</span>
-            <div className="w-6 h-6 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center">
-              <ArrowUpRight className="w-4 h-4" />
+          {/* Card 3: Tổng Thu Nhập */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex flex-col justify-between space-y-2 hover:border-emerald-300 transition-colors">
+            <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
+              <span>Tổng thu nhập</span>
+              <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <ArrowDownLeft className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <div className="text-base sm:text-lg font-black text-emerald-600 tracking-tight">
+              +{formatCurrency(totalIncome)}
             </div>
           </div>
-          <div className="text-lg sm:text-xl font-extrabold text-rose-600">
-            -{formatCurrency(totalExpense)}
+
+          {/* Card 4: Tổng Chi Tiêu */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex flex-col justify-between space-y-2 hover:border-rose-300 transition-colors">
+            <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
+              <span>Tổng chi tiêu</span>
+              <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <div className="text-base sm:text-lg font-black text-rose-600 tracking-tight">
+              -{formatCurrency(totalExpense)}
+            </div>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1 font-medium">
-            Đi chợ, ăn uống & sinh hoạt
-          </p>
         </div>
       </div>
 
@@ -285,13 +401,80 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Transaction History (2 Cols) */}
         <div className="lg:col-span-2 space-y-3">
-          <div className="flex items-center justify-between px-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
             <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
               <span>Lịch sử giao dịch</span>
               <span className="text-xs font-semibold text-slate-400">
                 ({filteredExpenses.length} giao dịch)
               </span>
             </h3>
+
+            {/* Time Filter Dropdowns */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 bg-white border border-slate-200/90 shadow-2xs px-2.5 py-1 rounded-xl text-xs font-semibold text-slate-700">
+                <Calendar className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                
+                {/* Month Select */}
+                <select
+                  value={selectedMonthFilter}
+                  onChange={(e) => setSelectedMonthFilter(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-slate-700 focus:outline-none cursor-pointer py-0.5"
+                >
+                  <option value="all">Tất cả tháng</option>
+                  <option value="01">Tháng 1</option>
+                  <option value="02">Tháng 2</option>
+                  <option value="03">Tháng 3</option>
+                  <option value="04">Tháng 4</option>
+                  <option value="05">Tháng 5</option>
+                  <option value="06">Tháng 6</option>
+                  <option value="07">Tháng 7</option>
+                  <option value="08">Tháng 8</option>
+                  <option value="09">Tháng 9</option>
+                  <option value="10">Tháng 10</option>
+                  <option value="11">Tháng 11</option>
+                  <option value="12">Tháng 12</option>
+                </select>
+
+                <span className="text-slate-300">/</span>
+
+                {/* Year Select */}
+                <select
+                  value={selectedYearFilter}
+                  onChange={(e) => setSelectedYearFilter(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-slate-700 focus:outline-none cursor-pointer py-0.5"
+                >
+                  <option value="all">Tất cả năm</option>
+                  {availableYears.map((y) => (
+                    <option key={y} value={y}>
+                      Năm {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={handleExportCsv}
+                className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-2.5 py-1 rounded-xl transition-colors flex items-center gap-1 shadow-2xs"
+                title="Xuất lịch sử chi tiêu ra file CSV"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Xuất CSV</span>
+              </button>
+
+              {(selectedMonthFilter !== 'all' || selectedYearFilter !== 'all') && (
+                <button
+                  onClick={() => {
+                    setSelectedMonthFilter('all');
+                    setSelectedYearFilter('all');
+                  }}
+                  className="text-[11px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2 py-1 rounded-lg transition-colors flex items-center gap-1"
+                  title="Xóa lọc thời gian"
+                >
+                  <X className="w-3 h-3" />
+                  <span>Xóa lọc</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {filteredExpenses.length === 0 ? (
@@ -309,51 +492,43 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
                 return (
                   <div
                     key={item.id}
-                    className="p-3.5 sm:p-4 flex items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors group"
+                    className="p-3 sm:p-3.5 flex items-center justify-between gap-2 hover:bg-slate-50/80 transition-colors group"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <div
-                        className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-2xs ${
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-2xs ${
                           isInc
                             ? 'bg-emerald-100 text-emerald-700'
                             : 'bg-rose-100 text-rose-700'
                         }`}
                       >
-                        <Icon className="w-5 h-5 stroke-[2]" />
+                        <Icon className="w-4 h-4 stroke-[2]" />
                       </div>
 
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-slate-800 text-xs sm:text-sm truncate">
-                            {item.note}
-                          </h4>
-                          <span
-                            className={`px-2 py-0.2 rounded-md text-[10px] font-extrabold ${
-                              isInc
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : 'bg-slate-100 text-slate-600 border border-slate-200'
-                            }`}
-                          >
-                            {item.category}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 text-[11px] text-slate-400 font-medium mt-0.5">
-                          <span>{item.date}</span>
-                          <span>•</span>
-                          <span>
-                            {item.paymentMethod === 'cash'
-                              ? '💵 Tiền mặt'
-                              : item.paymentMethod === 'card'
-                              ? '💳 Thẻ'
-                              : '🏦 Chuyển khoản'}
-                          </span>
-                        </div>
+                      <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden whitespace-nowrap">
+                        <h4 className="font-bold text-slate-800 text-xs sm:text-sm truncate whitespace-nowrap">
+                          {item.note}
+                        </h4>
+
+                        <span
+                          className={`hidden sm:inline-block px-2 py-0.5 rounded-md text-[10px] font-extrabold flex-shrink-0 whitespace-nowrap ${
+                            isInc
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-slate-100 text-slate-600 border border-slate-200'
+                          }`}
+                        >
+                          {item.category}
+                        </span>
+
+                        <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap flex-shrink-0 hidden md:inline">
+                          {item.date}
+                        </span>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <div
-                        className={`text-sm sm:text-base font-extrabold text-right ${
+                        className={`text-xs sm:text-sm font-extrabold text-right whitespace-nowrap ${
                           isInc ? 'text-emerald-600' : 'text-rose-600'
                         }`}
                       >
@@ -362,10 +537,10 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
 
                       <button
                         onClick={() => setExpToDelete(item)}
-                        className="w-8 h-8 rounded-full text-slate-300 hover:text-rose-500 hover:bg-rose-50 flex items-center justify-center transition-colors opacity-80 group-hover:opacity-100"
+                        className="w-7 h-7 rounded-full text-slate-300 hover:text-rose-500 hover:bg-rose-50 flex items-center justify-center transition-colors opacity-80 group-hover:opacity-100"
                         title="Xóa giao dịch"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
@@ -414,6 +589,69 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* EDIT LENDING BALANCE MODAL */}
+      {isEditLendingModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-fade-in">
+          <div className="relative w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl border border-amber-100 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
+                  <HandCoins className="w-4 h-4" />
+                </div>
+                <h3 className="font-bold text-slate-800 text-sm">Cập nhật Số dư cho vay</h3>
+              </div>
+              <button
+                onClick={() => setIsEditLendingModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveLendingBalance} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Số tiền bạn cho người khác mượn (VNĐ)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-2.5 font-bold text-slate-400 text-sm">
+                    ₫
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1000"
+                    placeholder="Nhập số tiền..."
+                    value={tempLendingInput}
+                    onChange={(e) => setTempLendingInput(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2.5 bg-amber-50/50 border border-amber-200 rounded-2xl text-sm font-black text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+                {tempLendingInput && (
+                  <p className="text-[11px] font-bold text-amber-700 mt-1">
+                    = {formatCurrency(parseFloat(tempLendingInput) || 0)}
+                  </p>
+                )}
+              </div>
+
+              <div className="bg-amber-50 p-3 rounded-2xl border border-amber-100 text-[11px] text-amber-800 leading-relaxed">
+                💡 <strong>Số dư chính</strong> sẽ tự động tính = <strong>Số dư hiện tại</strong> + <strong>Số dư cho vay</strong>.
+              </div>
+
+              <div className="pt-1">
+                <button
+                  type="submit"
+                  className="w-full py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Check className="w-4 h-4 stroke-[2.5]" />
+                  <span>Cập nhật số dư</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ADD TRANSACTION MODAL */}
       {isAddModalOpen && (
