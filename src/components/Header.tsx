@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Menu, Search, MoreVertical, Check, Pencil, Bell, Scale, Sparkles, ShieldCheck, Lock, Cloud, Utensils, PiggyBank } from 'lucide-react';
+import { ArrowLeft, Menu, Search, MoreVertical, Check, Pencil, Bell, Carrot, Sparkles, ShieldCheck, Lock, Cloud, Utensils, PiggyBank } from 'lucide-react';
 import { AppMode } from '../types';
 
 interface HeaderProps {
@@ -144,10 +144,10 @@ export const Header: React.FC<HeaderProps> = ({
         {showScale && (
           <button
             onClick={onScaleClick}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-slate-700 hover:bg-pink-50 active:scale-95 transition-all"
-            title="Quy đổi đơn vị"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-slate-700 hover:bg-emerald-50 active:scale-95 transition-all"
+            title="Quản lý nguyên liệu & Bảng tính"
           >
-            <Scale className="w-5 h-5 text-pink-500" />
+            <Carrot className="w-5 h-5 text-emerald-600" />
           </button>
         )}
 

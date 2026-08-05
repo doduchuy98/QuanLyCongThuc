@@ -1,12 +1,12 @@
 import React from 'react';
-import { ChefHat, LayoutGrid, Scale, Settings, X } from 'lucide-react';
+import { ChefHat, Table, Settings, X } from 'lucide-react';
 
 interface QuickAddModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddRecipe: () => void;
   onAddCategory?: () => void;
-  onOpenUnitConverter: () => void;
+  onOpenIngredients?: () => void;
   onOpenSettings: () => void;
 }
 
@@ -15,7 +15,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   onClose,
   onAddRecipe,
   onAddCategory,
-  onOpenUnitConverter,
+  onOpenIngredients,
   onOpenSettings,
 }) => {
   if (!isOpen) return null;
@@ -60,15 +60,15 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
           <button
             onClick={() => {
               onClose();
-              onOpenUnitConverter();
+              if (onOpenIngredients) onOpenIngredients();
             }}
             className="flex flex-col items-start p-4 rounded-2xl bg-gradient-to-br from-[#D9F7BE]/60 to-[#F6FFED] border border-emerald-200/50 hover:shadow-md transition-all text-left group"
           >
-            <div className="w-10 h-10 rounded-xl bg-emerald-400 text-white flex items-center justify-center mb-2 shadow-sm group-hover:scale-110 transition-transform">
-              <Scale className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center mb-2 shadow-sm group-hover:scale-110 transition-transform">
+              <Table className="w-5 h-5" />
             </div>
-            <span className="font-bold text-slate-800 text-sm">Quy đổi đơn vị</span>
-            <span className="text-[11px] text-slate-500 mt-0.5">Quy đổi định lượng</span>
+            <span className="font-bold text-slate-800 text-sm">Bảng tính nguyên liệu</span>
+            <span className="text-[11px] text-slate-500 mt-0.5">Quản lý giá & định lượng</span>
           </button>
         </div>
 

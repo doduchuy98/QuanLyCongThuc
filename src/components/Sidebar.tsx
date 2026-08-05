@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, ChefHat, LayoutGrid, Settings, Plus, Scale, ShieldCheck, Lock, Sparkles, Heart, Wallet, PiggyBank, Utensils } from 'lucide-react';
+import { Home, ChefHat, Settings, Plus, ShieldCheck, Sparkles, Wallet, PiggyBank, Utensils, Carrot, Table, Heart } from 'lucide-react';
 import { ActiveTab, AppMode } from '../types';
 
 interface SidebarProps {
@@ -35,6 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems = [
     { id: 'home' as ActiveTab, label: 'Trang chủ', icon: Home, count: null },
     { id: 'recipes' as ActiveTab, label: 'Công thức', icon: ChefHat, count: recipesCount },
+    { id: 'ingredients' as ActiveTab, label: 'Nguyên liệu (Bảng tính)', icon: Carrot, count: ingredientsCount },
     { id: 'browser' as ActiveTab, label: 'Thu/Chi', icon: Wallet, count: null },
     { id: 'settings' as ActiveTab, label: 'Cài đặt & Dữ liệu', icon: Settings, count: null },
   ];
@@ -145,11 +146,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
 
           <button
-            onClick={onOpenUnitConverter}
-            className="w-full py-2.5 px-3.5 rounded-2xl bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200/70 font-bold text-xs flex items-center justify-center gap-2 transition-all"
+            onClick={() => onTabChange('ingredients')}
+            className="w-full py-2.5 px-3.5 rounded-2xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200/70 font-bold text-xs flex items-center justify-center gap-2 transition-all"
           >
-            <Scale className="w-4 h-4 text-sky-500" />
-            <span>Quy đổi đơn vị tính</span>
+            <Table className="w-4 h-4 text-emerald-600" />
+            <span>Bảng tính nguyên liệu</span>
           </button>
         </div>
       </div>

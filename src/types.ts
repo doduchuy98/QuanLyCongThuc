@@ -72,7 +72,7 @@ export interface ShoppingListItem {
   createdAt: string;
 }
 
-export type ActiveTab = 'home' | 'recipes' | 'categories' | 'browser' | 'settings';
+export type ActiveTab = 'home' | 'recipes' | 'ingredients' | 'categories' | 'browser' | 'settings';
 
 export type AppMode = 'kitchen' | 'finance';
 

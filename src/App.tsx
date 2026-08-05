@@ -4,7 +4,6 @@ import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { BottomNav } from './components/BottomNav';
 import { QuickAddModal } from './components/QuickAddModal';
-import { UnitConverterModal } from './components/UnitConverterModal';
 import { useOffline } from './hooks/useOffline';
 
 import { HomeView } from './views/HomeView';
@@ -295,7 +294,6 @@ export default function App() {
 
   // Modals
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
-  const [isUnitConverterOpen, setIsUnitConverterOpen] = useState(false);
   const [isBatchAddShoppingModalOpen, setIsBatchAddShoppingModalOpen] = useState(false);
 
   // Shopping List Handlers
@@ -514,6 +512,28 @@ export default function App() {
     syncDeleteDoc('ingredients', ingId);
   };
 
+  const handleUpdateIngredientPrice = (ingId: string, newPrice: number | undefined) => {
+    setIngredients((prev) => {
+      const updated = prev.map((i) => (i.id === ingId ? { ...i, pricePerUnit: newPrice } : i));
+      const target = updated.find((i) => i.id === ingId);
+      if (target) {
+        syncSaveDoc('ingredients', target);
+      }
+      return updated;
+    });
+  };
+
+  const handleBatchAddMissingIngredients = (newIngs: IngredientItem[]) => {
+    setIngredients((prev) => {
+      const filteredNew = newIngs.filter(
+        (ni) => !prev.some((p) => p.name.trim().toLowerCase() === ni.name.trim().toLowerCase())
+      );
+      if (filteredNew.length === 0) return prev;
+      filteredNew.forEach((item) => syncSaveDoc('ingredients', item));
+      return [...filteredNew, ...prev];
+    });
+  };
+
   const handleAddCategory = (newCat: Category) => {
     setCategories((prev) => [...prev, newCat]);
     syncSaveDoc('categories', newCat);
@@ -622,7 +642,7 @@ export default function App() {
           onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
           onLogoutAdmin={handleAdminLogout}
           onQuickAddClick={() => setIsQuickAddOpen(true)}
-          onOpenUnitConverter={() => setIsUnitConverterOpen(true)}
+          onOpenUnitConverter={() => handleTabChange('ingredients')}
           appMode={appMode}
           onToggleAppMode={handleToggleAppMode}
         />
@@ -640,7 +660,7 @@ export default function App() {
             }}
             showBell={activeTab === 'home' && subView === 'none'}
             showScale={true}
-            onScaleClick={() => setIsUnitConverterOpen(true)}
+            onScaleClick={() => handleTabChange('ingredients')}
             isAdmin={isAdmin}
             onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
             onLogoutAdmin={handleAdminLogout}
@@ -733,7 +753,12 @@ export default function App() {
                     recipes={recipes}
                     categories={categories}
                     totalIngredientsCount={ingredients.length}
-                    onNavigateToRecipes={() => handleTabChange('recipes')}
+                    onNavigateToRecipes={(catName) => {
+                      if (catName) {
+                        setSelectedRecipeCategory(catName);
+                      }
+                      handleTabChange('recipes');
+                    }}
                     onNavigateToBrowser={() => handleTabChange('browser')}
                     onSwitchToExpense={() => setAppMode('finance')}
                     onSelectRecipe={handleSelectRecipe}
@@ -770,6 +795,7 @@ export default function App() {
                 {activeTab === 'ingredients' && (
                   <IngredientsView
                     ingredients={ingredients}
+                    recipes={recipes}
                     categories={categories}
                     selectedCategory={selectedIngredientCategory}
                     onSelectCategory={setSelectedIngredientCategory}
@@ -778,6 +804,8 @@ export default function App() {
                     onAddIngredient={handleStartAddIngredient}
                     onSelectIngredient={handleSelectIngredientToEdit}
                     onDeleteIngredient={handleDeleteIngredient}
+                    onUpdateIngredientPrice={handleUpdateIngredientPrice}
+                    onBatchAddMissingIngredients={handleBatchAddMissingIngredients}
                   />
                 )}
 
@@ -818,17 +846,14 @@ export default function App() {
           isOpen={isQuickAddOpen}
           onClose={() => setIsQuickAddOpen(false)}
           onAddRecipe={handleStartAddRecipe}
-          onOpenUnitConverter={() => setIsUnitConverterOpen(true)}
+          onOpenIngredients={() => {
+            setIsQuickAddOpen(false);
+            handleTabChange('ingredients');
+          }}
           onOpenSettings={() => {
             setIsQuickAddOpen(false);
             handleTabChange('settings');
           }}
-        />
-
-        {/* Unit Converter Tool Modal */}
-        <UnitConverterModal
-          isOpen={isUnitConverterOpen}
-          onClose={() => setIsUnitConverterOpen(false)}
         />
 
         {/* Batch Add Recipe Ingredients to Shopping List Modal */}
