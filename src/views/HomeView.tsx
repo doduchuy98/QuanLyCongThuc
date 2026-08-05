@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Utensils, LayoutGrid, RefreshCw, ChevronRight, ImageOff, MoreVertical, PiggyBank, ArrowRight, Wallet, Edit2, User, Sparkles, Check } from 'lucide-react';
+import { Utensils, LayoutGrid, RefreshCw, ChevronRight, ImageOff, MoreVertical, PiggyBank, ArrowRight, Wallet, Edit2, User, Sparkles, Check, Search, X } from 'lucide-react';
 import { Category, Recipe } from '../types';
+import { matchesSearch } from '../utils/stringUtils';
 
 interface HomeViewProps {
   recipes: Recipe[];
@@ -29,6 +30,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   });
   const [isNameModalOpen, setIsNameModalOpen] = useState<boolean>(false);
   const [inputName, setInputName] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
     const savedName = localStorage.getItem('app_user_name');
@@ -54,6 +56,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
     setIsNameModalOpen(true);
   };
 
+  // Filter recipes based on search query
+  const filteredRecipes = recipes.filter((r) => {
+    if (!searchQuery.trim()) return true;
+    const matchesTitle = matchesSearch(r.title, searchQuery);
+    const matchesCategory = matchesSearch(r.category, searchQuery);
+    const matchesIngredient = r.ingredients?.some((ing) => matchesSearch(ing.ingredientName, searchQuery));
+    return matchesTitle || matchesCategory || matchesIngredient;
+  });
+
   // Collect all category names (both from categories array and from recipes)
   const recipeCategories = categories.filter((c) => !c.type || c.type === 'recipe');
   const allCatNamesSet = new Set<string>();
@@ -62,7 +73,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     if (c.name) allCatNamesSet.add(c.name);
   });
 
-  recipes.forEach((r) => {
+  filteredRecipes.forEach((r) => {
     if (r.category && r.category.trim()) {
       allCatNamesSet.add(r.category.trim());
     }
@@ -70,10 +81,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   const categoryList = Array.from(allCatNamesSet);
 
-  // Group recipes by category, filtering out any categories with 0 recipes
+  // Group filtered recipes by category, filtering out any categories with 0 recipes
   const groupedCategories = categoryList
     .map((catName) => {
-      const catRecipes = recipes.filter(
+      const catRecipes = filteredRecipes.filter(
         (r) =>
           r.category === catName ||
           categories.find((c) => c.id === r.category)?.name === catName
@@ -86,7 +97,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     .filter((group) => group.recipes.length > 0);
 
   // Uncategorized recipes if any
-  const uncategorizedRecipes = recipes.filter((r) => !r.category || !r.category.trim());
+  const uncategorizedRecipes = filteredRecipes.filter((r) => !r.category || !r.category.trim());
   if (uncategorizedRecipes.length > 0) {
     groupedCategories.push({
       name: 'Chưa phân loại',
@@ -127,6 +138,26 @@ export const HomeView: React.FC<HomeViewProps> = ({
             className="w-full h-full object-cover rounded-full shadow-lg border-2 border-white rotate-6"
           />
         </div>
+      </div>
+
+      {/* Recipe Search Bar */}
+      <div className="relative">
+        <input
+          type="text"
+          placeholder="Bạn muốn tìm công thức nào"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full bg-white border border-slate-200/90 rounded-2xl pl-11 pr-10 py-3 text-xs md:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8] focus:border-transparent shadow-2xs transition-all"
+        />
+        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-3 top-3 text-xs font-bold text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full w-5 h-5 flex items-center justify-center transition-colors"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* First-time Access Name Modal */}
@@ -178,8 +209,92 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       )}
 
-      {/* Sections grouped by Category */}
-      {groupedCategories.length === 0 ? (
+      {/* Main Content: Search Results mode OR Category Grouped mode */}
+      {searchQuery.trim() !== '' ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+              <span>Kết quả tìm kiếm</span>
+              <span className="px-2 py-0.5 rounded-full bg-pink-100 text-[#FF8FB8] text-[10px] font-extrabold">
+                {filteredRecipes.length} công thức
+              </span>
+            </h3>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-xs font-bold text-slate-400 hover:text-slate-600 underline"
+            >
+              Xóa lọc
+            </button>
+          </div>
+
+          {filteredRecipes.length === 0 ? (
+            <div className="bg-white p-8 rounded-3xl border border-slate-100 text-center space-y-3 shadow-2xs">
+              <Utensils className="w-10 h-10 mx-auto text-slate-300" />
+              <h3 className="font-extrabold text-slate-700 text-sm">
+                Không tìm thấy công thức nào phù hợp với &quot;{searchQuery}&quot;
+              </h3>
+              <p className="text-xs text-slate-400">Thử tìm kiếm với tên công thức, nguyên liệu hoặc danh mục khác.</p>
+              <button
+                onClick={() => setSearchQuery('')}
+                className="px-4 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-200 transition-colors shadow-2xs"
+              >
+                Xóa từ khóa tìm kiếm
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {filteredRecipes.map((recipe) => (
+                <div
+                  key={recipe.id}
+                  onClick={() => onSelectRecipe(recipe.id)}
+                  className="bg-white p-3 rounded-2xl border border-slate-100 shadow-2xs hover:shadow-md transition-all cursor-pointer group flex items-center gap-3.5"
+                >
+                  {/* Thumbnail Image */}
+                  <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-100 border border-slate-100/80 flex-shrink-0">
+                    {recipe.imageUrl ? (
+                      <img
+                        src={recipe.imageUrl}
+                        alt={recipe.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
+                        <ImageOff className="w-4 h-4 opacity-40 mb-0.5 text-slate-500" />
+                        <span className="text-[8px] font-extrabold text-slate-500">Chưa có ảnh</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info Content */}
+                  <div className="min-w-0 flex-1 flex flex-col justify-center space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="font-extrabold text-slate-800 text-sm group-hover:text-[#FF8FB8] transition-colors truncate">
+                        {recipe.title}
+                      </h4>
+                      {recipe.category && (
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-lg border border-slate-200/60 truncate max-w-[140px]">
+                          {recipe.category}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                      <span>Cập nhật: {recipe.updatedAt}</span>
+                      {recipe.rating ? (
+                        <span className="font-bold text-amber-500 flex items-center gap-0.5">
+                          ★ {recipe.rating}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#FF8FB8] group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : groupedCategories.length === 0 ? (
         <div className="bg-white p-8 rounded-3xl border border-slate-100 text-center space-y-3 shadow-2xs">
           <Utensils className="w-10 h-10 mx-auto text-slate-300" />
           <h3 className="font-extrabold text-slate-700 text-sm">Chưa có công thức món ăn nào</h3>
