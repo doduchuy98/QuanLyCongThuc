@@ -540,6 +540,13 @@ export default function App() {
     setActiveTab('home');
   };
 
+  const handleClearExpenseData = () => {
+    setExpenses([]);
+    syncReplaceCollection('expenses', []);
+    localStorage.removeItem('app_expenses');
+    localStorage.removeItem('app_lending_balance');
+  };
+
   const handleImportData = (data: { recipes: Recipe[]; ingredients: IngredientItem[]; categories: Category[] }) => {
     setRecipes(data.recipes);
     setIngredients(data.ingredients);
@@ -785,6 +792,7 @@ export default function App() {
                     onLogoutAdmin={handleAdminLogout}
                     onOpenChangePin={() => setIsChangePinOpen(true)}
                     onResetData={handleResetData}
+                    onClearExpenseData={handleClearExpenseData}
                     onImportData={handleImportData}
                   />
                 )}

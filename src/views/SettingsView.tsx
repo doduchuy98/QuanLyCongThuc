@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Download, Upload, RotateCcw, Smartphone, ShieldCheck, HardDrive, Wifi, WifiOff, Database, Sparkles, CheckCircle2, Lock, KeyRound, Globe, FileSpreadsheet, Server, RefreshCw, Copy, Check, AlertTriangle, Cloud, ExternalLink } from 'lucide-react';
+import React, { useState } from 'react';
+import { Download, Upload, RotateCcw, Smartphone, ShieldCheck, HardDrive, Wifi, WifiOff, Database, Sparkles, CheckCircle2, Lock, KeyRound, Globe, FileSpreadsheet, RefreshCw, AlertTriangle, Cloud, Trash2 } from 'lucide-react';
 import { Category, ExpenseItem, IngredientItem, Recipe } from '../types';
 import { useOffline } from '../hooks/useOffline';
-import { getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig } from '../lib/supabase';
-import { testSupabaseConnection, SUPABASE_INIT_SQL } from '../services/supabaseSync';
 import { testFirestoreConnection } from '../services/firestoreSync';
 
 interface SettingsViewProps {
@@ -16,6 +14,7 @@ interface SettingsViewProps {
   onLogoutAdmin?: () => void;
   onOpenChangePin?: () => void;
   onResetData: () => void;
+  onClearExpenseData?: () => void;
   onImportData: (data: { recipes: Recipe[]; ingredients: IngredientItem[]; categories: Category[] }) => void;
 }
 
@@ -29,24 +28,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onLogoutAdmin,
   onOpenChangePin,
   onResetData,
+  onClearExpenseData,
   onImportData,
 }) => {
   const { isOffline, swRegistered, cacheStatus, cacheAllRecipesOffline } = useOffline();
   const [cacheSuccessMsg, setCacheSuccessMsg] = useState(false);
-
-  // Supabase Config State
-  const [sbUrlInput, setSbUrlInput] = useState('');
-  const [sbKeyInput, setSbKeyInput] = useState('');
-  const [isSbConfigured, setIsSbConfigured] = useState(false);
-  const [isTestingSb, setIsTestingSb] = useState(false);
-  const [sbTestResult, setSbTestResult] = useState<{
-    success?: boolean;
-    message?: string;
-    missingTables?: string[];
-    details?: string;
-  } | null>(null);
-  const [showSqlModal, setShowSqlModal] = useState(false);
-  const [copiedSql, setCopiedSql] = useState(false);
 
   // Firestore Test State
   const [isTestingFs, setIsTestingFs] = useState(false);
@@ -64,52 +50,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setIsTestingFs(false);
   };
 
-  useEffect(() => {
-    const config = getSupabaseConfig();
-    setSbUrlInput(config.url);
-    setSbKeyInput(config.key);
-    setIsSbConfigured(config.isConfigured);
-  }, []);
-
-  const handleSaveSupabaseConfig = () => {
-    saveSupabaseConfig(sbUrlInput, sbKeyInput);
-    const updated = getSupabaseConfig();
-    setIsSbConfigured(updated.isConfigured);
-    alert('Đã lưu cấu hình Supabase! Vui lòng bấm "Kiểm tra kết nối" bên dưới.');
-  };
-
-  const handleClearSupabaseConfig = () => {
-    clearSupabaseConfig();
-    setSbUrlInput('');
-    setSbKeyInput('');
-    setIsSbConfigured(false);
-    setSbTestResult(null);
-    alert('Đã xóa cấu hình Supabase.');
-  };
-
-  const handleRunTestSupabase = async () => {
-    setIsTestingSb(true);
-    setSbTestResult(null);
-    try {
-      const res = await testSupabaseConnection();
-      setSbTestResult(res);
-    } catch (err: any) {
-      setSbTestResult({
-        success: false,
-        message: `Lỗi kết nối: ${err.message || String(err)}`,
-      });
-    } finally {
-      setIsTestingSb(false);
-    }
-  };
-
-  const handleCopySql = () => {
-    navigator.clipboard.writeText(SUPABASE_INIT_SQL);
-    setCopiedSql(true);
-    setTimeout(() => setCopiedSql(false), 2500);
-  };
-
-
   const handleManualCacheSync = async () => {
     const success = await cacheAllRecipesOffline({ recipes, ingredients, categories });
     if (success) {
@@ -117,6 +57,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setTimeout(() => setCacheSuccessMsg(false), 3000);
     }
   };
+
   const handleExportJson = () => {
     const data = {
       recipes,
@@ -375,131 +316,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </div>
 
-      {/* Supabase Realtime Cloud Sync Section */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-100 space-y-3 shadow-2xs">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-            <Cloud className="w-4 h-4 text-emerald-600" />
-            <span>Đồng bộ Đám mây Supabase</span>
-          </h3>
-          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-            isSbConfigured ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'
-          }`}>
-            {isSbConfigured ? 'Đã bật' : 'Chưa cấu hình'}
-          </span>
-        </div>
-
-        <div className="space-y-3 text-xs">
-          <p className="text-slate-500 leading-relaxed text-[11px]">
-            Tự động đồng bộ dữ liệu công thức, nguyên liệu và chi tiêu giữa nhiều thiết bị theo thời gian thực (Realtime).
-          </p>
-
-          <div className="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                Supabase Project URL
-              </label>
-              <input
-                type="text"
-                placeholder="https://xyz.supabase.co"
-                value={sbUrlInput}
-                onChange={(e) => setSbUrlInput(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                Supabase Anon API Key
-              </label>
-              <input
-                type="password"
-                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                value={sbKeyInput}
-                onChange={(e) => setSbKeyInput(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 pt-1">
-              <button
-                onClick={handleSaveSupabaseConfig}
-                className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center justify-center gap-1.5"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Lưu thông tin</span>
-              </button>
-
-              {isSbConfigured && (
-                <button
-                  onClick={handleClearSupabaseConfig}
-                  className="py-2 px-3 bg-white border border-slate-200 text-rose-600 hover:bg-rose-50 font-bold text-xs rounded-xl transition-all"
-                >
-                  Xóa
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleRunTestSupabase}
-                disabled={isTestingSb || !isSbConfigured}
-                className="flex-1 py-2.5 px-3 bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-2xs"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isTestingSb ? 'animate-spin' : ''}`} />
-                <span>{isTestingSb ? 'Đang kiểm tra kết nối...' : 'Kiểm tra kết nối Supabase'}</span>
-              </button>
-
-              <button
-                onClick={() => setShowSqlModal(true)}
-                className="py-2.5 px-3 bg-sky-50 border border-sky-200 text-sky-800 hover:bg-sky-100 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5"
-              >
-                <Server className="w-3.5 h-3.5 text-sky-600" />
-                <span>SQL Khởi tạo</span>
-              </button>
-            </div>
-
-            {sbTestResult && (
-              <div
-                className={`p-3 rounded-2xl border text-xs leading-relaxed space-y-1.5 ${
-                  sbTestResult.success
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                    : 'bg-rose-50 border-rose-200 text-rose-900'
-                }`}
-              >
-                <div className="font-extrabold flex items-center gap-1.5">
-                  {sbTestResult.success ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                  ) : (
-                    <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-                  )}
-                  <span>{sbTestResult.success ? 'Kết nối thành công!' : 'Phát hiện sự cố đồng bộ'}</span>
-                </div>
-                <p className="text-[11px] font-medium">{sbTestResult.message}</p>
-                {sbTestResult.missingTables && sbTestResult.missingTables.length > 0 && (
-                  <div className="pt-1">
-                    <button
-                      onClick={() => setShowSqlModal(true)}
-                      className="px-2.5 py-1 bg-rose-600 text-white font-bold text-[11px] rounded-lg hover:bg-rose-700 transition-colors flex items-center gap-1 shadow-2xs"
-                    >
-                      <Server className="w-3 h-3" />
-                      <span>Bấm vào đây để sao chép SQL tạo các bảng còn thiếu</span>
-                    </button>
-                  </div>
-                )}
-                {sbTestResult.details && (
-                  <p className="text-[10px] text-slate-500 font-mono bg-white/70 p-1.5 rounded-lg border border-slate-200">
-                    {sbTestResult.details}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
       {/* Backup & Restore Data Section */}
       <div className="bg-white p-4 rounded-3xl border border-slate-100 space-y-3 shadow-2xs">
         <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
@@ -550,6 +366,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           <button
             onClick={() => {
+              if (confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử giao dịch và dữ liệu sổ tay thu chi?')) {
+                if (onClearExpenseData) {
+                  onClearExpenseData();
+                } else {
+                  localStorage.removeItem('app_expenses');
+                  localStorage.removeItem('app_lending_balance');
+                }
+                alert('Đã xóa toàn bộ dữ liệu thu chi thành công!');
+              }
+            }}
+            className="w-full p-3 rounded-2xl bg-rose-50/80 border border-rose-200 hover:bg-rose-100 transition-colors flex items-center justify-between text-rose-700 shadow-2xs"
+          >
+            <div className="flex items-center gap-2.5">
+              <Trash2 className="w-4 h-4 text-rose-600" />
+              <div className="text-left">
+                <span className="text-xs font-bold block">Xóa dữ liệu Trang Thu / Chi</span>
+                <span className="text-[10px] text-rose-500 font-medium">Xóa sạch toàn bộ lịch sử giao dịch & số dư vay mượn</span>
+              </div>
+            </div>
+            <span className="text-[11px] font-bold text-rose-600 bg-white px-2.5 py-1 rounded-xl border border-rose-200 shadow-2xs">
+              Xóa dữ liệu
+            </span>
+          </button>
+
+          <button
+            onClick={() => {
               if (confirm('Bạn có chắc chắn muốn đặt lại tất cả dữ liệu về mặc định ban đầu?')) {
                 onResetData();
                 alert('Đã khôi phục dữ liệu ban đầu!');
@@ -593,52 +435,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           Webapp thiết kế tối ưu giao diện Mobile First cho màn hình Safari, Chrome, Edge trên tất cả các thiết bị smartphone.
         </p>
       </div>
-
-      {/* Modal hướng dẫn SQL khởi tạo Supabase */}
-      {showSqlModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 space-y-4 shadow-xl border border-slate-100 max-h-[90vh] overflow-y-auto animate-scale-up">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <Server className="w-5 h-5 text-emerald-600" />
-                <h3 className="font-extrabold text-slate-800 text-sm">
-                  SQL Khởi tạo bảng Supabase
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowSqlModal(false)}
-                className="w-7 h-7 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center font-bold text-xs"
-              >
-                ✕
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Mở <strong className="text-emerald-700">Supabase Dashboard</strong> &gt; Chọn dự án &gt; <strong className="text-slate-800">SQL Editor</strong> &gt; dán đoạn mã bên dưới và bấm <strong className="text-emerald-700">RUN</strong> để khởi tạo 5 bảng dữ liệu &amp; mở quyền truy cập:
-            </p>
-
-            <div className="relative bg-slate-900 text-emerald-400 p-3.5 rounded-2xl text-[11px] font-mono overflow-x-auto max-h-56 leading-relaxed border border-slate-800">
-              <pre>{SUPABASE_INIT_SQL}</pre>
-            </div>
-
-            <div className="flex items-center gap-2 pt-1">
-              <button
-                onClick={handleCopySql}
-                className="flex-1 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
-              >
-                {copiedSql ? <Check className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4" />}
-                <span>{copiedSql ? 'Đã sao chép SQL!' : 'Sao chép đoạn SQL'}</span>
-              </button>
-              <button
-                onClick={() => setShowSqlModal(false)}
-                className="py-2.5 px-4 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-200 transition-colors"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
