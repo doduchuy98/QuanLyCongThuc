@@ -93,10 +93,7 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
   );
 
   const [steps, setSteps] = useState<CookingStep[]>(
-    recipeToEdit?.steps || [
-      { stepNumber: 1, title: 'Sơ chế nguyên liệu', description: 'Rửa sạch nguyên liệu và xắt nhỏ.', isDone: false },
-      { stepNumber: 2, title: 'Nấu nướng', description: 'Nấu theo trình tự nhiệt độ phù hợp.', isDone: false },
-    ]
+    recipeToEdit?.steps || []
   );
 
   // Ingredient picker modal state
@@ -186,8 +183,8 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
       ...steps,
       {
         stepNumber: nextNum,
-        title: `Bước ${nextNum}: Quy trình tiếp theo`,
-        description: 'Nhập hướng dẫn...',
+        title: `Bước ${nextNum}`,
+        description: '',
         isDone: false,
       },
     ]);
@@ -284,55 +281,47 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="p-4 space-y-5 pb-28 animate-fade-in">
-      {/* Upload Image Box */}
-      <div>
-        <div className="flex items-center justify-between mb-1.5">
-          <label className="block text-xs font-bold text-slate-700">
-            Ảnh món ăn
+      {/* Ultra-Minimalist Image Section */}
+      <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-2xs space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-slate-700">
+            Ảnh món ăn <span className="text-slate-400 font-normal">(Tùy chọn)</span>
           </label>
           {imageUrl && (
             <button
               type="button"
               onClick={() => setImageUrl('')}
-              className="text-xs font-bold text-rose-500 hover:underline flex items-center gap-1"
+              className="text-[11px] font-bold text-rose-500 hover:underline flex items-center gap-1"
             >
               <X className="w-3.5 h-3.5" />
-              <span>Xóa ảnh (No image)</span>
+              <span>Xóa ảnh</span>
             </button>
           )}
         </div>
 
-        <div className="relative w-full h-44 rounded-3xl border-2 border-dashed border-pink-200 bg-pink-50/40 overflow-hidden flex flex-col items-center justify-center p-3 text-center group hover:bg-pink-50 transition-colors">
-          {imageUrl ? (
-            <div className="relative w-full h-full">
-              <img src={imageUrl} alt="Preview" className="w-full h-full object-cover rounded-2xl" />
-              <label className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer rounded-2xl">
-                <Upload className="w-6 h-6 mb-1" />
-                <span className="text-xs font-bold">Thay đổi ảnh</span>
-                <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-              </label>
-            </div>
-          ) : (
-            <label className="flex flex-col items-center justify-center text-slate-400 cursor-pointer w-full h-full">
-              <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-[#FF8FB8] mb-1.5 group-hover:scale-110 transition-transform">
-                <Upload className="w-5 h-5" />
-              </div>
-              <span className="font-bold text-xs text-slate-700">Tải ảnh lên từ máy / điện thoại</span>
-              <span className="text-[11px] text-slate-400 mt-0.5">Nhấp vào đây để chọn file ảnh (Nếu không tải sẽ để "No image")</span>
+        <div className="flex items-center gap-2.5">
+          {/* Square Thumbnail Preview / Placeholder */}
+          <div className="relative w-12 h-12 rounded-xl bg-pink-50/80 border border-pink-100 flex-shrink-0 overflow-hidden flex items-center justify-center">
+            {imageUrl ? (
+              <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
+            ) : (
+              <ImageOff className="w-5 h-5 text-pink-300" />
+            )}
+          </div>
+
+          {/* Minimal Upload Button & URL Input */}
+          <div className="flex-1 min-w-0 flex items-center gap-2">
+            <label className="px-3 py-1.5 bg-pink-50 hover:bg-pink-100 text-[#FF8FB8] rounded-xl text-xs font-bold border border-pink-100 cursor-pointer flex items-center gap-1.5 transition-colors flex-shrink-0 active:scale-95">
+              <Upload className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Tải ảnh</span>
               <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
             </label>
-          )}
-        </div>
-
-        {/* URL input */}
-        <div className="mt-2 space-y-2">
-          <div className="flex items-center gap-2">
             <input
               type="text"
-              placeholder="Hoặc dán URL liên kết ảnh (https://...)"
+              placeholder="Hoặc dán URL liên kết ảnh..."
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
-              className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8]"
+              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF8FB8] focus:bg-white truncate"
             />
           </div>
         </div>
@@ -521,7 +510,14 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
         </div>
 
         <div className="space-y-3">
-          {steps.map((st, idx) => (
+          {steps.length === 0 ? (
+            <div className="p-3 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200 text-center">
+              <p className="text-xs text-slate-400 font-medium">
+                Chưa có bước nào. Nhấp <strong className="text-[#FF8FB8] cursor-pointer" onClick={handleAddStep}>"+ Thêm bước"</strong> để tạo mới quy trình.
+              </p>
+            </div>
+          ) : (
+            steps.map((st, idx) => (
             <div key={idx} className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-extrabold text-[#FF8FB8] bg-pink-100 px-2 py-0.5 rounded-md">
@@ -553,7 +549,7 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
                 className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-700 resize-none"
               />
             </div>
-          ))}
+          )))}
         </div>
       </div>
 

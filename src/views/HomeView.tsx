@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Utensils, LayoutGrid, RefreshCw, ChevronRight, ImageOff, MoreVertical, PiggyBank, ArrowRight, Wallet, Edit2, User, Sparkles, Check, Search, X } from 'lucide-react';
+import { Utensils, LayoutGrid, RefreshCw, ChevronRight, ImageOff, MoreVertical, PiggyBank, ArrowRight, Wallet, Edit2, User, Sparkles, Check, Search, X, Clock } from 'lucide-react';
 import { Category, Recipe } from '../types';
 import { matchesSearch } from '../utils/stringUtils';
 
@@ -31,6 +31,31 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const [isNameModalOpen, setIsNameModalOpen] = useState<boolean>(false);
   const [inputName, setInputName] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [now, setNow] = useState<Date>(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatVietnameseDateTime = (d: Date) => {
+    const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+    const dayName = days[d.getDay()];
+    const dateStr = d.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+    const timeStr = d.toLocaleTimeString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+    return `${dayName}, ${dateStr} • ${timeStr}`;
+  };
 
   useEffect(() => {
     const savedName = localStorage.getItem('app_user_name');
@@ -109,10 +134,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
     <div className="p-4 space-y-6 pb-24">
       {/* Top Banner */}
       <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-r from-[#FFD9E8] via-[#FFF8FB] to-[#AEE9FF]/60 p-5 md:p-6 shadow-sm border border-pink-200/50">
-        <div className="relative z-10 max-w-[220px] md:max-w-lg">
-          <span className="inline-block px-2.5 py-1 rounded-full bg-white/80 text-[11px] font-bold text-[#FF8FB8] mb-1.5 shadow-2xs">
-            Trợ lý làm bếp 🌟
-          </span>
+        <div className="relative z-10 max-w-[240px] md:max-w-lg">
+          {/* Live Clock & Full Date */}
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-xs text-[11px] font-bold text-slate-700 shadow-2xs mb-2 border border-pink-100/80">
+            <Clock className="w-3.5 h-3.5 text-[#FF8FB8] shrink-0" />
+            <span className="truncate">{formatVietnameseDateTime(now)}</span>
+          </div>
+
           <div className="flex items-center gap-2 group">
             <h2 className="text-lg md:text-xl font-black text-slate-800 leading-tight">
               Xin chào, {userName || 'bạn'}! 👋
@@ -126,7 +154,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </button>
           </div>
           <p className="text-xs md:text-sm font-semibold text-slate-600 mt-1">
-            Hiệu quả – Chính xác – Chuẩn định lượng & quy trình
+            Quản lý công thức bởi Đỗ Đức Huy
           </p>
         </div>
 

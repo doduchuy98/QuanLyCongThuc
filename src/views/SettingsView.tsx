@@ -1,5 +1,22 @@
 import React, { useState } from 'react';
-import { Download, Upload, RotateCcw, Smartphone, ShieldCheck, HardDrive, Wifi, WifiOff, Database, Sparkles, CheckCircle2, Lock, KeyRound, Globe, FileSpreadsheet, RefreshCw, AlertTriangle, Cloud, Trash2 } from 'lucide-react';
+import {
+  Download,
+  Upload,
+  RotateCcw,
+  ShieldCheck,
+  Wifi,
+  WifiOff,
+  CheckCircle2,
+  Lock,
+  KeyRound,
+  FileSpreadsheet,
+  RefreshCw,
+  AlertTriangle,
+  Cloud,
+  Trash2,
+  Sparkles,
+  Database,
+} from 'lucide-react';
 import { Category, ExpenseItem, IngredientItem, Recipe } from '../types';
 import { useOffline } from '../hooks/useOffline';
 import { testFirestoreConnection } from '../services/firestoreSync';
@@ -102,7 +119,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       ].join(',');
     });
 
-    // \uFEFF Byte Order Mark for UTF-8 compatibility with Excel
     const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -138,230 +154,174 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   return (
-    <div className="p-4 space-y-4 pb-28 animate-fade-in">
-      {/* App Info Header */}
-      <div className="bg-gradient-to-r from-[#FFD9E8] via-[#FFF8FB] to-[#AEE9FF]/60 p-4 rounded-3xl border border-pink-200/50 flex items-center justify-between">
+    <div className="p-4 space-y-4 pb-28 animate-fade-in max-w-lg mx-auto">
+      {/* Compact App Info Header */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between shadow-2xs">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-white text-[#FF8FB8] flex items-center justify-center font-extrabold text-xl shadow-sm border border-pink-100">
+          <div className="w-10 h-10 rounded-xl bg-pink-50 text-[#FF8FB8] flex items-center justify-center font-bold text-lg border border-pink-100 shrink-0">
             🍲
           </div>
           <div>
-            <h2 className="font-extrabold text-slate-800 text-sm">Quản Lý Công Thức Món Ăn</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Website Công thức & Tính Giá vốn món ăn</p>
+            <h2 className="font-extrabold text-slate-800 text-xs">Cài Đặt Hệ Thống</h2>
+            <p className="text-[11px] text-slate-400 font-medium">Quản lý bởi Đỗ Đức Huy</p>
           </div>
         </div>
 
-        <div className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold flex items-center gap-1.5 ${
-          isAdmin ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-slate-100 text-slate-600 border border-slate-200'
-        }`}>
-          {isAdmin ? <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> : <Lock className="w-3.5 h-3.5 text-slate-400" />}
-          <span>{isAdmin ? 'Quyền Admin' : 'Khách (Người dùng)'}</span>
+        <div
+          className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold flex items-center gap-1 shrink-0 ${
+            isAdmin
+              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+              : 'bg-slate-100 text-slate-600 border border-slate-200'
+          }`}
+        >
+          {isAdmin ? <ShieldCheck className="w-3 h-3 text-emerald-600" /> : <Lock className="w-3 h-3 text-slate-400" />}
+          <span>{isAdmin ? 'Quyền Admin' : 'Khách'}</span>
         </div>
       </div>
 
-      {/* Admin Mode Management Section */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-100 space-y-3 shadow-2xs">
+      {/* Admin Auth Control */}
+      <div className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-2xs space-y-2.5">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-            <ShieldCheck className="w-4 h-4 text-[#FF8FB8]" />
-            <span>Phân quyền Quản trị Admin</span>
-          </h3>
-          <span className="text-[10px] font-bold text-slate-400">Vercel Deployment Mode</span>
-        </div>
-
-        <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
-          {isAdmin ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-xl border border-emerald-200">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-black">
-                    ✓
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-extrabold text-emerald-900">Đã kích hoạt quyền Admin</h4>
-                    <p className="text-[11px] text-emerald-700">Bạn có toàn quyền Thêm / Sửa / Xóa công thức & giá vốn.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={onOpenChangePin}
-                  className="flex-1 py-2.5 px-3 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-2xs"
-                >
-                  <KeyRound className="w-4 h-4 text-amber-500" />
-                  <span>Đổi mã PIN Admin</span>
-                </button>
-                <button
-                  onClick={onLogoutAdmin}
-                  className="flex-1 py-2.5 px-3 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5"
-                >
-                  <Lock className="w-4 h-4 text-rose-500" />
-                  <span>Đăng xuất Admin</span>
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200/70 text-amber-900 text-xs leading-relaxed space-y-1">
-                <p className="font-extrabold flex items-center gap-1">
-                  <Globe className="w-4 h-4 text-amber-600" />
-                  <span>Chế độ Người dùng (Chỉ đọc)</span>
-                </p>
-                <p className="text-[11px] text-amber-800 font-medium">
-                  Người dùng xem công thức, tra cứu chi phí, tính định lượng mà không thể xóa hay sửa dữ liệu gốc của bạn.
-                </p>
-              </div>
-
-              <button
-                onClick={onOpenAdminLogin}
-                className="w-full py-2.5 px-4 bg-gradient-to-r from-[#FF8FB8] to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                <span>Đăng nhập Admin (Nhập mã PIN)</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Service Worker Offline Cache Section */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-100 space-y-3 shadow-2xs">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-            Bộ nhớ Cache Ngoại tuyến (Service Worker)
-          </h3>
-          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${
-            isOffline ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
-          }`}>
-            {isOffline ? <WifiOff className="w-3.5 h-3.5" /> : <Wifi className="w-3.5 h-3.5" />}
-            <span>{isOffline ? 'Ngoại tuyến (Offline)' : 'Trực tuyến (Online)'}</span>
-          </div>
-        </div>
-
-        <div className="p-3.5 bg-gradient-to-r from-pink-50 via-purple-50 to-sky-50 rounded-2xl border border-pink-100 space-y-2">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
-            <Database className="w-4 h-4 text-[#FF8FB8]" />
-            <span>Trạng thái Cache: {swRegistered ? 'Sẵn sàng dùng Offline' : 'Kích hoạt Service Worker'}</span>
-          </div>
-          <p className="text-xs text-slate-600 leading-relaxed">
-            Toàn bộ công thức, hình ảnh và 'Chế độ nấu ăn' được tự động lưu trữ trong Cache trình duyệt. Bạn có thể tra cứu và bật hẹn giờ ngay cả khi vào bếp không có WiFi hoặc mạng di động.
-          </p>
-
-          <button
-            onClick={handleManualCacheSync}
-            className="mt-2 w-full py-2.5 px-3 bg-[#FF8FB8] hover:bg-pink-600 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>{cacheStatus === 'caching' ? 'Đang cập nhật Cache...' : 'Lưu tất cả công thức vào Cache Offline'}</span>
-          </button>
-
-          {cacheSuccessMsg && (
-            <div className="p-2 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 border border-emerald-200">
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Đã lưu thành công {recipes.length} công thức vào Cache Offline!</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Firebase Firestore Realtime Cloud Sync Section */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-100 space-y-3 shadow-2xs">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-            <Cloud className="w-4 h-4 text-[#FF8FB8]" />
-            <span>Đồng bộ Đám mây Firebase Firestore</span>
-          </h3>
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-            <span>Đã kích hoạt</span>
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+            Tài khoản Admin
+          </span>
+          <span className="text-[11px] text-slate-400 font-medium">
+            {isAdmin ? 'Đã đăng nhập' : 'Chưa đăng nhập'}
           </span>
         </div>
 
-        <div className="space-y-3 text-xs">
-          <p className="text-slate-600 leading-relaxed text-xs">
-            Hệ thống đang tự động đồng bộ 2 chiều (Realtime) dữ liệu <strong>Công thức, Nguyên liệu, Danh mục, Danh sách mua sắm, Chi tiêu</strong> thông qua <strong>Google Firebase Firestore</strong>. Tất cả thay đổi trên điện thoại hoặc máy tính đều được cập nhật ngay lập tức.
-          </p>
-
-          <div className="flex flex-col gap-2 pt-1">
+        {isAdmin ? (
+          <div className="flex items-center gap-2">
             <button
-              onClick={handleTestFirestore}
-              disabled={isTestingFs}
-              className="w-full py-2.5 px-3 bg-[#FF8FB8] hover:bg-pink-600 disabled:opacity-50 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs"
+              onClick={onOpenChangePin}
+              className="flex-1 py-2 px-3 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition-all flex items-center justify-center gap-1.5"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isTestingFs ? 'animate-spin' : ''}`} />
-              <span>{isTestingFs ? 'Đang kiểm tra kết nối Firestore...' : 'Kiểm tra trạng thái kết nối Firebase Firestore'}</span>
+              <KeyRound className="w-3.5 h-3.5 text-amber-500" />
+              <span>Đổi mã PIN</span>
             </button>
-
-            {fsTestResult && (
-              <div
-                className={`p-3 rounded-2xl border text-xs leading-relaxed space-y-1 ${
-                  fsTestResult.success
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                    : 'bg-rose-50 border-rose-200 text-rose-900'
-                }`}
-              >
-                <div className="font-extrabold flex items-center gap-1.5">
-                  {fsTestResult.success ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                  ) : (
-                    <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-                  )}
-                  <span>{fsTestResult.success ? 'Kết nối Firebase Firestore thành công!' : 'Phát hiện sự cố'}</span>
-                </div>
-                <p className="text-[11px] font-medium">{fsTestResult.message}</p>
-              </div>
-            )}
+            <button
+              onClick={onLogoutAdmin}
+              className="flex-1 py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl border border-rose-100 transition-all flex items-center justify-center gap-1.5"
+            >
+              <Lock className="w-3.5 h-3.5 text-rose-500" />
+              <span>Đăng xuất</span>
+            </button>
           </div>
-        </div>
+        ) : (
+          <button
+            onClick={onOpenAdminLogin}
+            className="w-full py-2.5 px-3 bg-[#FF8FB8] hover:bg-pink-600 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span>Đăng nhập Admin (Nhập PIN)</span>
+          </button>
+        )}
       </div>
 
-      {/* Backup & Restore Data Section */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-100 space-y-3 shadow-2xs">
-        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-          Sao lưu & Dữ liệu
-        </h3>
+      {/* Sync & Offline Status */}
+      <div className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-2xs space-y-2.5">
+        <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 block">
+          Đồng bộ & Mạng
+        </span>
 
-        <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          {/* Cloud Sync Button */}
+          <button
+            onClick={handleTestFirestore}
+            disabled={isTestingFs}
+            className="p-2.5 bg-slate-50 hover:bg-pink-50/60 rounded-xl border border-slate-200/80 flex items-center gap-2 text-left transition-colors"
+          >
+            <Cloud className="w-4 h-4 text-[#FF8FB8] shrink-0" />
+            <div className="min-w-0">
+              <span className="font-bold text-slate-700 block truncate">Firebase Cloud</span>
+              <span className="text-[10px] text-slate-400 font-medium block truncate">
+                {isTestingFs ? 'Đang kiểm tra...' : 'Kiểm tra kết nối'}
+              </span>
+            </div>
+          </button>
+
+          {/* Cache Button */}
+          <button
+            onClick={handleManualCacheSync}
+            className="p-2.5 bg-slate-50 hover:bg-pink-50/60 rounded-xl border border-slate-200/80 flex items-center gap-2 text-left transition-colors"
+          >
+            <Database className="w-4 h-4 text-purple-500 shrink-0" />
+            <div className="min-w-0">
+              <span className="font-bold text-slate-700 block truncate">Cache Offline</span>
+              <span className="text-[10px] text-slate-400 font-medium block truncate">
+                {cacheStatus === 'caching' ? 'Đang lưu...' : 'Lưu vào bộ nhớ'}
+              </span>
+            </div>
+          </button>
+        </div>
+
+        {fsTestResult && (
+          <div
+            className={`p-2.5 rounded-xl border text-[11px] font-medium flex items-center gap-1.5 ${
+              fsTestResult.success
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                : 'bg-rose-50 border-rose-200 text-rose-800'
+            }`}
+          >
+            {fsTestResult.success ? (
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+            )}
+            <span className="truncate">{fsTestResult.message}</span>
+          </div>
+        )}
+
+        {cacheSuccessMsg && (
+          <div className="p-2.5 bg-emerald-50 text-emerald-800 text-[11px] font-bold rounded-xl border border-emerald-200 flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span>Đã lưu thành công dữ liệu Offline!</span>
+          </div>
+        )}
+      </div>
+
+      {/* Data Management Actions */}
+      <div className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-2xs space-y-2">
+        <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">
+          Quản lý dữ liệu
+        </span>
+
+        <div className="space-y-1.5 text-xs">
           <button
             onClick={handleExportExpenseCsv}
-            className="w-full p-3 rounded-2xl bg-emerald-50 border border-emerald-200/90 hover:bg-emerald-100/80 transition-colors flex items-center justify-between text-emerald-900 shadow-2xs"
+            className="w-full p-2.5 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:text-emerald-800 transition-colors flex items-center justify-between text-slate-700 font-bold"
           >
-            <div className="flex items-center gap-2.5">
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-              <div className="text-left">
-                <span className="text-xs font-bold block">Xuất dữ liệu chi tiêu (CSV - Excel)</span>
-                <span className="text-[10px] text-emerald-700 font-medium">Hỗ trợ tiếng Việt đầy đủ ({expenses.length} giao dịch)</span>
-              </div>
+            <div className="flex items-center gap-2">
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Xuất lịch sử thu chi (CSV)</span>
             </div>
-            <span className="text-[11px] font-extrabold text-emerald-700 bg-white px-2.5 py-1 rounded-xl border border-emerald-200 shadow-2xs">
-              Tải CSV
+            <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+              Excel
             </span>
           </button>
 
           <button
             onClick={handleExportJson}
-            className="w-full p-3 rounded-2xl bg-slate-50 border border-slate-200 hover:bg-pink-50 hover:border-pink-200 transition-colors flex items-center justify-between"
+            className="w-full p-2.5 rounded-xl bg-slate-50 hover:bg-pink-50 hover:text-[#FF8FB8] transition-colors flex items-center justify-between text-slate-700 font-bold"
           >
-            <div className="flex items-center gap-2.5">
-              <Download className="w-4 h-4 text-[#FF8FB8]" />
-              <span className="text-xs font-bold text-slate-700">Xuất dữ liệu công thức (JSON)</span>
+            <div className="flex items-center gap-2">
+              <Download className="w-4 h-4 text-[#FF8FB8] shrink-0" />
+              <span>Xuất công thức (JSON)</span>
             </div>
-            <span className="text-[11px] font-semibold text-slate-400">Tải xuống</span>
+            <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+              Tải về
+            </span>
           </button>
 
-          <label className="w-full p-3 rounded-2xl bg-slate-50 border border-slate-200 hover:bg-pink-50 hover:border-pink-200 transition-colors flex items-center justify-between cursor-pointer">
-            <div className="flex items-center gap-2.5">
-              <Upload className="w-4 h-4 text-sky-500" />
-              <span className="text-xs font-bold text-slate-700">Nhập dữ liệu công thức (JSON)</span>
+          <label className="w-full p-2.5 rounded-xl bg-slate-50 hover:bg-sky-50 hover:text-sky-800 transition-colors flex items-center justify-between text-slate-700 font-bold cursor-pointer">
+            <div className="flex items-center gap-2">
+              <Upload className="w-4 h-4 text-sky-500 shrink-0" />
+              <span>Nhập công thức (JSON)</span>
             </div>
-            <span className="text-[11px] font-semibold text-slate-400">Chọn file</span>
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleImportJson}
-              className="hidden"
-            />
+            <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+              Chọn file
+            </span>
+            <input type="file" accept=".json" onChange={handleImportJson} className="hidden" />
           </label>
 
           <button
@@ -376,17 +336,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 alert('Đã xóa toàn bộ dữ liệu thu chi thành công!');
               }
             }}
-            className="w-full p-3 rounded-2xl bg-rose-50/80 border border-rose-200 hover:bg-rose-100 transition-colors flex items-center justify-between text-rose-700 shadow-2xs"
+            className="w-full p-2.5 rounded-xl bg-slate-50 hover:bg-rose-50 text-rose-600 transition-colors flex items-center justify-between font-bold"
           >
-            <div className="flex items-center gap-2.5">
-              <Trash2 className="w-4 h-4 text-rose-600" />
-              <div className="text-left">
-                <span className="text-xs font-bold block">Xóa dữ liệu Trang Thu / Chi</span>
-                <span className="text-[10px] text-rose-500 font-medium">Xóa sạch toàn bộ lịch sử giao dịch & số dư vay mượn</span>
-              </div>
+            <div className="flex items-center gap-2">
+              <Trash2 className="w-4 h-4 text-rose-500 shrink-0" />
+              <span>Xóa lịch sử thu chi</span>
             </div>
-            <span className="text-[11px] font-bold text-rose-600 bg-white px-2.5 py-1 rounded-xl border border-rose-200 shadow-2xs">
-              Xóa dữ liệu
+            <span className="text-[10px] font-bold text-rose-500 bg-white px-2 py-0.5 rounded-md border border-rose-200">
+              Xóa
             </span>
           </button>
 
@@ -397,43 +354,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 alert('Đã khôi phục dữ liệu ban đầu!');
               }
             }}
-            className="w-full p-3 rounded-2xl bg-slate-50 border border-slate-200 hover:bg-rose-50 hover:border-rose-200 transition-colors flex items-center justify-between text-rose-600"
+            className="w-full p-2.5 rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-500 hover:text-rose-600 transition-colors flex items-center justify-between font-bold"
           >
-            <div className="flex items-center gap-2.5">
-              <RotateCcw className="w-4 h-4" />
-              <span className="text-xs font-bold">Khôi phục dữ liệu mẫu ban đầu</span>
+            <div className="flex items-center gap-2">
+              <RotateCcw className="w-4 h-4 text-slate-400 shrink-0" />
+              <span>Khôi phục dữ liệu mẫu</span>
             </div>
-            <span className="text-[11px] font-semibold text-rose-400">Đặt lại</span>
+            <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+              Đặt lại
+            </span>
           </button>
         </div>
-      </div>
-
-      {/* Cloud Integration Info */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-100 space-y-3 shadow-2xs">
-        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-          Tích hợp Google Workspace
-        </h3>
-
-        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
-            <HardDrive className="w-4 h-4 text-amber-500" />
-            <span>Google Drive & Sheets Sync Ready</span>
-          </div>
-          <p className="text-xs text-slate-500 leading-relaxed">
-            Ứng dụng hỗ trợ đồng bộ công thức và danh sách nguyên liệu trực tiếp vào file Google Sheets cá nhân và sao lưu ảnh lên Google Drive của bạn.
-          </p>
-        </div>
-      </div>
-
-      {/* PWA / App Info */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-100 space-y-2 text-xs text-slate-500 shadow-2xs">
-        <div className="flex items-center gap-2 font-bold text-slate-700">
-          <Smartphone className="w-4 h-4 text-emerald-500" />
-          <span>Website Mobile Đáp Ứng</span>
-        </div>
-        <p className="text-[11px] leading-relaxed text-slate-500">
-          Webapp thiết kế tối ưu giao diện Mobile First cho màn hình Safari, Chrome, Edge trên tất cả các thiết bị smartphone.
-        </p>
       </div>
     </div>
   );

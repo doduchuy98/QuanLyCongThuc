@@ -18,9 +18,10 @@ import { BrowserView } from './views/BrowserView';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { ChangePinModal } from './components/ChangePinModal';
 import { BatchAddShoppingModal } from './components/BatchAddShoppingModal';
+import { NotificationModal } from './components/NotificationModal';
 
 import { INITIAL_RECIPES, INITIAL_INGREDIENTS, INITIAL_CATEGORIES, INITIAL_SHOPPING_LIST, INITIAL_EXPENSES } from './data/mockData';
-import { ActiveTab, Category, IngredientItem, Recipe, ShoppingListItem, AppMode, ExpenseItem } from './types';
+import { ActiveTab, Category, IngredientItem, Recipe, ShoppingListItem, AppMode, ExpenseItem, AppNotification } from './types';
 import { ExpenseTrackerView } from './views/ExpenseTrackerView';
 import {
   seedCollectionIfEmpty,
@@ -162,6 +163,37 @@ export default function App() {
     return saved ? JSON.parse(saved) : INITIAL_SHOPPING_LIST;
   });
 
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
+    const saved = localStorage.getItem('app_notifications');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // Fallback to default
+      }
+    }
+    return [
+      {
+        id: 'notif_welcome',
+        type: 'system',
+        title: 'Chào mừng bạn đến với Quản lý Công thức!',
+        message: 'Hệ thống hỗ trợ lưu trữ công thức, định lượng nguyên liệu và lịch sử hoạt động.',
+        timestamp: 'Hôm nay',
+        isRead: false,
+      },
+      {
+        id: 'notif_update_app',
+        type: 'system',
+        title: 'Cập nhật hệ thống',
+        message: 'Chuông thông báo tự động ghi nhận mọi hoạt động thêm, sửa, xóa công thức & nguyên liệu.',
+        timestamp: 'Hôm nay',
+        isRead: false,
+      },
+    ];
+  });
+
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+
   // Save to LocalStorage
   useEffect(() => {
     localStorage.setItem('app_recipes', JSON.stringify(recipes));
@@ -178,6 +210,47 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('app_shopping_list', JSON.stringify(shoppingList));
   }, [shoppingList]);
+
+  useEffect(() => {
+    localStorage.setItem('app_notifications', JSON.stringify(notifications));
+  }, [notifications]);
+
+  const addNotification = (
+    type: AppNotification['type'],
+    title: string,
+    message: string,
+    recipeId?: string
+  ) => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+    const newNotif: AppNotification = {
+      id: 'notif_' + Date.now(),
+      type,
+      title,
+      message,
+      timestamp: `${timeStr} • ${dateStr}`,
+      isRead: false,
+      recipeId,
+    };
+    setNotifications((prev) => [newNotif, ...prev]);
+  };
+
+  const handleMarkAllNotificationsAsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  };
+
+  const handleMarkNotificationAsRead = (id: string) => {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+  };
+
+  const handleClearAllNotifications = () => {
+    setNotifications([]);
+  };
+
+  const handleDeleteNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
 
   // Firestore Real-Time Cloud Sync (Online mode)
   const [isCloudSynced, setIsCloudSynced] = useState<boolean>(true);
@@ -470,8 +543,10 @@ export default function App() {
 
   // Data Mutation Handlers
   const handleSaveRecipe = (savedRecipe: Recipe) => {
+    let isUpdate = false;
     setRecipes((prev) => {
       const exists = prev.some((r) => r.id === savedRecipe.id);
+      isUpdate = exists;
       if (exists) {
         return prev.map((r) => (r.id === savedRecipe.id ? savedRecipe : r));
       }
@@ -479,14 +554,35 @@ export default function App() {
     });
     syncSaveDoc('recipes', savedRecipe);
 
+    if (isUpdate) {
+      addNotification(
+        'edit',
+        'Đã cập nhật công thức',
+        `Món "${savedRecipe.title}" vừa được chỉnh sửa thành công.`,
+        savedRecipe.id
+      );
+    } else {
+      addNotification(
+        'add',
+        'Thêm công thức mới',
+        `Món "${savedRecipe.title}" vừa được thêm vào danh sách.`,
+        savedRecipe.id
+      );
+    }
+
     // Navigate to recipe detail or recipes list
     setSelectedRecipeId(savedRecipe.id);
     setSubView('recipe_detail');
   };
 
   const handleDeleteRecipe = (recipeId: string) => {
+    const target = recipes.find((r) => r.id === recipeId);
+    const title = target ? target.title : 'Công thức';
     setRecipes((prev) => prev.filter((r) => r.id !== recipeId));
     syncDeleteDoc('recipes', recipeId);
+
+    addNotification('delete', 'Đã xóa công thức', `Món "${title}" đã được xóa khỏi danh sách.`);
+
     if (selectedRecipeId === recipeId) {
       setSubView('none');
       setActiveTab('recipes');
@@ -494,8 +590,10 @@ export default function App() {
   };
 
   const handleSaveIngredient = (savedIngredient: IngredientItem) => {
+    let isUpdate = false;
     setIngredients((prev) => {
       const exists = prev.some((i) => i.id === savedIngredient.id);
+      isUpdate = exists;
       if (exists) {
         return prev.map((i) => (i.id === savedIngredient.id ? savedIngredient : i));
       }
@@ -503,13 +601,23 @@ export default function App() {
     });
     syncSaveDoc('ingredients', savedIngredient);
 
+    if (isUpdate) {
+      addNotification('edit', 'Cập nhật nguyên liệu', `Nguyên liệu "${savedIngredient.name}" đã được cập nhật.`);
+    } else {
+      addNotification('add', 'Thêm nguyên liệu mới', `Nguyên liệu "${savedIngredient.name}" vừa được tạo.`);
+    }
+
     setSubView('none');
     setActiveTab('ingredients');
   };
 
   const handleDeleteIngredient = (ingId: string) => {
+    const target = ingredients.find((i) => i.id === ingId);
+    const name = target ? target.name : 'Nguyên liệu';
     setIngredients((prev) => prev.filter((i) => i.id !== ingId));
     syncDeleteDoc('ingredients', ingId);
+
+    addNotification('delete', 'Đã xóa nguyên liệu', `Nguyên liệu "${name}" đã được xóa.`);
   };
 
   const handleUpdateIngredientPrice = (ingId: string, newPrice: number | undefined) => {
@@ -659,6 +767,8 @@ export default function App() {
               }
             }}
             showBell={activeTab === 'home' && subView === 'none'}
+            onBellClick={() => setIsNotificationModalOpen(true)}
+            unreadCount={notifications.filter((n) => !n.isRead).length}
             showScale={true}
             onScaleClick={() => handleTabChange('ingredients')}
             isAdmin={isAdmin}
@@ -881,6 +991,21 @@ export default function App() {
           onClose={() => setIsChangePinOpen(false)}
           currentPin={adminPin}
           onChangePin={handleChangeAdminPin}
+        />
+
+        {/* Activity Notifications Modal */}
+        <NotificationModal
+          isOpen={isNotificationModalOpen}
+          onClose={() => setIsNotificationModalOpen(false)}
+          notifications={notifications}
+          onMarkAllAsRead={handleMarkAllNotificationsAsRead}
+          onMarkAsRead={handleMarkNotificationAsRead}
+          onClearAll={handleClearAllNotifications}
+          onDeleteNotification={handleDeleteNotification}
+          onSelectRecipe={(recipeId) => {
+            setSelectedRecipeId(recipeId);
+            setSubView('recipe_detail');
+          }}
         />
 
         {/* Admin Access Restriction Notice Modal */}

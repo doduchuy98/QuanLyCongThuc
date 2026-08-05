@@ -19,6 +19,7 @@ interface HeaderProps {
   onEditClick?: () => void;
   showBell?: boolean;
   onBellClick?: () => void;
+  unreadCount?: number;
   showScale?: boolean;
   onScaleClick?: () => void;
   rightAction?: React.ReactNode;
@@ -47,6 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
   onEditClick,
   showBell,
   onBellClick,
+  unreadCount = 0,
   showScale,
   onScaleClick,
   rightAction,
@@ -168,7 +170,11 @@ export const Header: React.FC<HeaderProps> = ({
             aria-label="Thông báo"
           >
             <Bell className="w-5 h-5 text-slate-700" />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-pink-500 rounded-full animate-pulse" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 px-1.5 py-0.5 bg-[#FF8FB8] text-white text-[9px] font-black rounded-full min-w-[16px] text-center leading-none shadow-2xs border border-white animate-pulse">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </button>
         )}
 

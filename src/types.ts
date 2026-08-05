@@ -91,3 +91,14 @@ export interface ExpenseItem {
   personName?: string; // Tên người vay / cho vay
 }
 
+export interface AppNotification {
+  id: string;
+  type: 'add' | 'edit' | 'delete' | 'system' | 'shopping' | 'expense';
+  title: string;
+  message: string;
+  timestamp: string;
+  isRead: boolean;
+  recipeId?: string;
+}
+
+

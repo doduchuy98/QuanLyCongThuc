@@ -6,7 +6,6 @@ export function formatRecipeShareText(recipe: Recipe): string {
     text += `📝 ${recipe.description}\n`;
   }
   text += `📁 Danh mục: ${recipe.category}\n`;
-  text += `⏱️ Chuẩn bị: ${recipe.prepTimeMinutes || 15} phút | Nấu: ${recipe.cookTimeMinutes || 20} phút\n`;
   text += `👥 Định lượng: ${recipe.portionLabel || '1 phần'}\n\n`;
 
   if (recipe.ingredients && recipe.ingredients.length > 0) {
