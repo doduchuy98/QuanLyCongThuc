@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle2, Clock, ChefHat, Sparkles, Share2, Users, RotateCcw, Pencil, ImageOff, Info, Calendar, ShoppingCart } from 'lucide-react';
+import { Plus, CheckCircle2, Sparkles, Share2, Users, RotateCcw, Pencil, ImageOff } from 'lucide-react';
 import { Recipe, CookingStep, IngredientItem } from '../types';
 import { shareRecipeData } from '../utils/shareUtils';
 
@@ -23,7 +23,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   onBack,
   onAddRecipeToShoppingList,
 }) => {
-  const [activeTab, setActiveTab] = useState<'thanh_phan' | 'dinh_luong' | 'quy_trinh' | 'thong_tin'>('thanh_phan');
+  const [activeTab, setActiveTab] = useState<'thanh_phan' | 'dinh_luong' | 'quy_trinh'>('thanh_phan');
 
   // Base servings calculation from portionLabel (e.g., "1 phần", "2 phần")
   const getBaseServings = (portionLabel?: string): number => {
@@ -152,21 +152,6 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
 
         {/* Header Action Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-          {onAddRecipeToShoppingList && (
-            <button
-              onClick={() => {
-                onAddRecipeToShoppingList(recipe, servings);
-                setShareFeedbackMsg(`Đã thêm ${recipe.ingredients.length} nguyên liệu (${servings} khẩu phần) vào Danh sách đi chợ! 🛒`);
-                setTimeout(() => setShareFeedbackMsg(null), 3500);
-              }}
-              className="px-3 py-2 rounded-2xl bg-gradient-to-r from-[#FF8FB8] to-[#FF6B9D] text-white font-extrabold text-xs shadow-md shadow-pink-200 hover:opacity-95 transition-all flex items-center gap-1.5"
-              title="Thêm nguyên liệu món này vào danh sách đi chợ"
-            >
-              <ShoppingCart className="w-4 h-4 stroke-[2.5]" />
-              <span className="hidden sm:inline">Thêm vào đi chợ</span>
-            </button>
-          )}
-
           <button
             onClick={() => {
               if (isAdmin) {
@@ -238,16 +223,6 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
         >
           Quy trình
         </button>
-        <button
-          onClick={() => setActiveTab('thong_tin')}
-          className={`py-3 px-2.5 border-b-2 whitespace-nowrap transition-all ${
-            activeTab === 'thong_tin'
-              ? 'border-[#FF8FB8] text-[#FF8FB8]'
-              : 'border-transparent text-slate-400 hover:text-slate-600'
-          }`}
-        >
-          Thông tin
-        </button>
       </div>
 
       {/* Tab Content 1: Thành phần (Ingredients Table) */}
@@ -304,24 +279,54 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
 
       {/* Tab Content 2: Định lượng (Portion Calculator) */}
       {activeTab === 'dinh_luong' && (
-        <div className="p-4 space-y-4">
-          {/* Servings Input Section */}
-          <div className="bg-gradient-to-r from-pink-50 via-purple-50 to-pink-50 p-4 rounded-3xl border border-pink-100 shadow-2xs space-y-3">
-            <div className="flex items-center justify-between">
+        <div className="p-4 space-y-3">
+          {/* Ultra-compact Servings & Ratio Bar */}
+          <div className="bg-gradient-to-r from-pink-50/80 to-purple-50/80 p-2.5 px-3 rounded-2xl border border-pink-100 shadow-2xs space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-[#FF8FB8] text-white flex items-center justify-center shadow-xs">
-                  <Users className="w-4 h-4 stroke-[2.5]" />
+                <Users className="w-4 h-4 text-[#FF8FB8] flex-shrink-0" />
+                <span className="text-xs font-bold text-slate-800">Khẩu phần:</span>
+                <div className="flex items-center bg-white rounded-xl border border-pink-200 px-1 py-0.5 shadow-2xs">
+                  <button
+                    onClick={() => handleServingsChange(Math.max(1, Math.round(servings) - 1))}
+                    className="w-6 h-6 rounded-lg bg-pink-50 hover:bg-pink-100 text-[#FF8FB8] font-black text-xs flex items-center justify-center transition-colors active:scale-95"
+                    title="Giảm khẩu phần"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="0.5"
+                    value={servings === 0 ? '' : servings}
+                    onChange={(e) => {
+                      if (e.target.value === '') {
+                        setServings(0);
+                        setIngredientInputs({});
+                        return;
+                      }
+                      const val = parseFloat(e.target.value);
+                      if (!isNaN(val)) handleServingsChange(val);
+                    }}
+                    className="w-10 text-center font-black text-slate-800 text-xs focus:outline-none"
+                  />
+                  <button
+                    onClick={() => handleServingsChange(Math.round(servings) + 1)}
+                    className="w-6 h-6 rounded-lg bg-pink-50 hover:bg-pink-100 text-[#FF8FB8] font-black text-xs flex items-center justify-center transition-colors active:scale-95"
+                    title="Tăng khẩu phần"
+                  >
+                    +
+                  </button>
                 </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-800">Số khẩu phần ăn (Servings)</h4>
-                  <p className="text-[11px] text-slate-500 font-medium">Điền số người ăn để tự động tính tỷ lệ nguyên liệu</p>
-                </div>
+                <span className="text-[10px] font-bold text-[#FF8FB8] bg-white px-2 py-0.5 rounded-lg border border-pink-100/80">
+                  Tỷ lệ: x{Math.round(portionMultiplier * 100) / 100}
+                </span>
               </div>
 
               {portionMultiplier !== 1 && (
                 <button
                   onClick={handleResetScaling}
-                  className="px-2.5 py-1 rounded-full bg-white text-slate-600 border border-slate-200 text-[11px] font-bold hover:bg-slate-50 transition-all flex items-center gap-1 shadow-2xs"
+                  className="px-2 py-0.5 rounded-lg bg-white text-slate-600 border border-slate-200 text-[10px] font-bold hover:bg-slate-50 transition-all flex items-center gap-1 shadow-2xs"
                   title="Khôi phục về tỷ lệ chuẩn gốc 1x"
                 >
                   <RotateCcw className="w-3 h-3 text-[#FF8FB8]" />
@@ -330,54 +335,9 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
               )}
             </div>
 
-            <div className="flex items-center gap-3 pt-1">
-              <div className="flex items-center bg-white rounded-2xl border border-pink-200 p-1 shadow-2xs">
-                <button
-                  onClick={() => handleServingsChange(Math.max(1, Math.round(servings) - 1))}
-                  className="w-8 h-8 rounded-xl bg-pink-50 hover:bg-pink-100 text-[#FF8FB8] font-black text-base flex items-center justify-center transition-colors"
-                  title="Giảm khẩu phần"
-                >
-                  -
-                </button>
-                <input
-                  type="number"
-                  min="0.1"
-                  step="0.5"
-                  value={servings === 0 ? '' : servings}
-                  onChange={(e) => {
-                    if (e.target.value === '') {
-                      setServings(0);
-                      setIngredientInputs({});
-                      return;
-                    }
-                    const val = parseFloat(e.target.value);
-                    if (!isNaN(val)) handleServingsChange(val);
-                  }}
-                  className="w-16 text-center font-black text-slate-800 text-base focus:outline-none"
-                />
-                <button
-                  onClick={() => handleServingsChange(Math.round(servings) + 1)}
-                  className="w-8 h-8 rounded-xl bg-pink-50 hover:bg-pink-100 text-[#FF8FB8] font-black text-base flex items-center justify-center transition-colors"
-                  title="Tăng khẩu phần"
-                >
-                  +
-                </button>
-              </div>
-
-              <div className="text-xs font-bold text-slate-700">
-                <span>khẩu phần</span>
-                <div className="text-[11px] text-[#FF8FB8] font-semibold">
-                  Tỷ lệ nhân: x{Math.round(portionMultiplier * 100) / 100}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Proportional Scaling Tip Banner */}
-          <div className="p-3 bg-amber-50/80 rounded-2xl border border-amber-200/80 text-xs font-medium text-amber-900 flex items-start gap-2">
-            <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-            <p className="leading-relaxed text-[11px]">
-              <strong className="font-bold">Tính tỷ lệ thông minh:</strong> Thay đổi số khẩu phần trên HOẶC điền trực tiếp định lượng của 1 nguyên liệu bên dưới, tất cả các nguyên liệu khác sẽ tự động thay đổi theo đúng tỷ lệ!
+            <p className="text-[10px] text-slate-500 font-medium flex items-center gap-1.5 border-t border-pink-100/60 pt-1.5 leading-tight">
+              <Sparkles className="w-3 h-3 text-amber-500 flex-shrink-0" />
+              <span>Đổi khẩu phần HOẶC nhập trực tiếp định lượng bên dưới để tự nhân tỷ lệ.</span>
             </p>
           </div>
 
@@ -488,54 +448,6 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tab Content 4: Thông tin chi tiết */}
-      {activeTab === 'thong_tin' && (
-        <div className="p-4 space-y-4">
-          <div className="bg-white rounded-2xl border border-slate-100 p-4 space-y-3 shadow-2xs">
-            <div>
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                Mô tả công thức
-              </span>
-              <p className="text-xs font-medium text-slate-700 leading-relaxed">
-                {recipe.description || 'Chưa có mô tả chi tiết cho công thức này.'}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-amber-500" />
-                <div>
-                  <span className="text-[10px] text-slate-400 block font-bold">Chuẩn bị</span>
-                  <span className="text-xs font-bold text-slate-700">
-                    {recipe.prepTimeMinutes || 20} phút
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <ChefHat className="w-4 h-4 text-pink-500" />
-                <div>
-                  <span className="text-[10px] text-slate-400 block font-bold">Nấu</span>
-                  <span className="text-xs font-bold text-slate-700">
-                    {recipe.cookTimeMinutes || 30} phút
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {recipe.updatedAt && (
-              <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-sky-500" />
-                <div>
-                  <span className="text-[10px] text-slate-400 block font-bold">Thời gian cập nhật</span>
-                  <span className="text-xs font-bold text-slate-700">{recipe.updatedAt}</span>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
