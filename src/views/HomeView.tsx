@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Utensils, LayoutGrid, RefreshCw, ChevronRight, ImageOff, MoreVertical, PiggyBank, ArrowRight, Wallet, Edit2, User, Sparkles, Check, Search, X, Clock } from 'lucide-react';
 import { Category, Recipe } from '../types';
 import { matchesSearch } from '../utils/stringUtils';
+import { parseRecipeDate } from '../utils/dateUtils';
 
 interface HomeViewProps {
   recipes: Recipe[];
@@ -14,6 +15,111 @@ interface HomeViewProps {
   onSelectRecipe: (recipeId: string) => void;
   isAdmin?: boolean;
 }
+
+interface RecipeCarouselProps {
+  recipes: Recipe[];
+  onSelectRecipe: (recipeId: string) => void;
+}
+
+const RecipeCarousel: React.FC<RecipeCarouselProps> = ({ recipes, onSelectRecipe }) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isUserInteracting, setIsUserInteracting] = useState(false);
+  const interactionTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleUserInteraction = () => {
+    setIsUserInteracting(true);
+    if (interactionTimerRef.current) {
+      clearTimeout(interactionTimerRef.current);
+    }
+    interactionTimerRef.current = setTimeout(() => {
+      setIsUserInteracting(false);
+    }, 4000);
+  };
+
+  useEffect(() => {
+    if (recipes.length <= 1) return;
+
+    const interval = setInterval(() => {
+      if (isHovered || isUserInteracting) return;
+
+      const container = scrollRef.current;
+      if (!container) return;
+
+      const maxScrollLeft = container.scrollWidth - container.clientWidth;
+      const cardWidth = 200;
+
+      if (container.scrollLeft >= maxScrollLeft - 10) {
+        container.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        container.scrollBy({ left: cardWidth, behavior: 'smooth' });
+      }
+    }, 2800);
+
+    return () => clearInterval(interval);
+  }, [recipes.length, isHovered, isUserInteracting]);
+
+  return (
+    <div
+      className="relative group"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div
+        ref={scrollRef}
+        onTouchStart={handleUserInteraction}
+        onMouseDown={handleUserInteraction}
+        onScroll={handleUserInteraction}
+        className="flex overflow-x-auto gap-3 pb-2 pt-1 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none snap-x snap-mandatory scroll-smooth"
+      >
+        {recipes.map((recipe) => (
+          <div
+            key={recipe.id}
+            onClick={() => onSelectRecipe(recipe.id)}
+            className="w-[180px] sm:w-[200px] flex-shrink-0 snap-start bg-white p-2.5 rounded-2xl border border-slate-100 shadow-2xs hover:shadow-md transition-all cursor-pointer group/card flex flex-col justify-between space-y-2"
+          >
+            <div className="relative w-full h-28 rounded-xl overflow-hidden bg-slate-100 border border-slate-100/80 flex-shrink-0">
+              {recipe.imageUrl ? (
+                <img
+                  src={recipe.imageUrl}
+                  alt={recipe.title}
+                  className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-300"
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
+                  <ImageOff className="w-5 h-5 opacity-40 mb-1 text-slate-500" />
+                  <span className="text-[9px] font-extrabold text-slate-500">Chưa có ảnh</span>
+                </div>
+              )}
+              {recipe.category && (
+                <span className="absolute top-2 left-2 px-2 py-0.5 bg-slate-900/70 backdrop-blur-xs text-white text-[9px] font-bold rounded-lg truncate max-w-[80%]">
+                  {recipe.category}
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-1 min-w-0 flex-1 flex flex-col justify-between">
+              <div>
+                <h4 className="font-bold text-slate-800 text-xs sm:text-sm group-hover/card:text-[#FF8FB8] transition-colors line-clamp-2 leading-snug">
+                  {recipe.title}
+                </h4>
+              </div>
+
+              <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-50">
+                <span className="truncate">Cập nhật: {recipe.updatedAt}</span>
+                {recipe.rating ? (
+                  <span className="font-bold text-amber-500 flex items-center gap-0.5 flex-shrink-0">
+                    ★ {recipe.rating}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export const HomeView: React.FC<HomeViewProps> = ({
   recipes,
@@ -81,14 +187,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
     setIsNameModalOpen(true);
   };
 
-  // Filter recipes based on search query
-  const filteredRecipes = recipes.filter((r) => {
-    if (!searchQuery.trim()) return true;
-    const matchesTitle = matchesSearch(r.title, searchQuery);
-    const matchesCategory = matchesSearch(r.category, searchQuery);
-    const matchesIngredient = r.ingredients?.some((ing) => matchesSearch(ing.ingredientName, searchQuery));
-    return matchesTitle || matchesCategory || matchesIngredient;
-  });
+  // Filter recipes based on search query, sorted by newest updated date first
+  const filteredRecipes = [...recipes]
+    .sort((a, b) => parseRecipeDate(b.updatedAt) - parseRecipeDate(a.updatedAt))
+    .filter((r) => {
+      if (!searchQuery.trim()) return true;
+      const matchesTitle = matchesSearch(r.title, searchQuery);
+      const matchesCategory = matchesSearch(r.category, searchQuery);
+      const matchesIngredient = r.ingredients?.some((ing) => matchesSearch(ing.ingredientName, searchQuery));
+      return matchesTitle || matchesCategory || matchesIngredient;
+    });
 
   // Collect all category names (both from categories array and from recipes)
   const recipeCategories = categories.filter((c) => !c.type || c.type === 'recipe');
@@ -353,53 +461,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </button>
             </div>
 
-            {/* Recipe Cards Horizontal Scrollable List for this Category */}
-            <div className="flex overflow-x-auto gap-3 pb-2 pt-1 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none snap-x snap-mandatory">
-              {group.recipes.map((recipe) => (
-                <div
-                  key={recipe.id}
-                  onClick={() => onSelectRecipe(recipe.id)}
-                  className="w-[180px] sm:w-[200px] flex-shrink-0 snap-start bg-white p-2.5 rounded-2xl border border-slate-100 shadow-2xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between space-y-2"
-                >
-                  <div className="relative w-full h-28 rounded-xl overflow-hidden bg-slate-100 border border-slate-100/80 flex-shrink-0">
-                    {recipe.imageUrl ? (
-                      <img
-                        src={recipe.imageUrl}
-                        alt={recipe.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
-                        <ImageOff className="w-5 h-5 opacity-40 mb-1 text-slate-500" />
-                        <span className="text-[9px] font-extrabold text-slate-500">Chưa có ảnh</span>
-                      </div>
-                    )}
-                    {recipe.category && (
-                      <span className="absolute top-2 left-2 px-2 py-0.5 bg-slate-900/70 backdrop-blur-xs text-white text-[9px] font-bold rounded-lg truncate max-w-[80%]">
-                        {recipe.category}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="space-y-1 min-w-0 flex-1 flex flex-col justify-between">
-                    <div>
-                      <h4 className="font-bold text-slate-800 text-xs sm:text-sm group-hover:text-[#FF8FB8] transition-colors line-clamp-2 leading-snug">
-                        {recipe.title}
-                      </h4>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-50">
-                      <span className="truncate">Cập nhật: {recipe.updatedAt}</span>
-                      {recipe.rating ? (
-                        <span className="font-bold text-amber-500 flex items-center gap-0.5 flex-shrink-0">
-                          ★ {recipe.rating}
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {/* Recipe Cards Auto-slide Horizontal Carousel for this Category */}
+            <RecipeCarousel recipes={group.recipes} onSelectRecipe={onSelectRecipe} />
           </div>
         ))
       )}

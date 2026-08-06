@@ -4,6 +4,7 @@ import { Search, MoreVertical, Plus, ChefHat, ArrowUpDown, Star, Calendar, Check
 import { Category, IngredientItem, Recipe } from '../types';
 import { shareRecipeData } from '../utils/shareUtils';
 import { matchesSearch } from '../utils/stringUtils';
+import { parseRecipeDate } from '../utils/dateUtils';
 import { CuteDeleteModal } from '../components/CuteDeleteModal';
 
 export type SortOption = 'date_desc' | 'date_asc' | 'name_asc' | 'name_desc' | 'rating_desc';
@@ -143,10 +144,10 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
         return (b.rating || 0) - (a.rating || 0);
       }
       if (sortBy === 'date_asc') {
-        return parseDate(a.updatedAt) - parseDate(b.updatedAt);
+        return parseRecipeDate(a.updatedAt) - parseRecipeDate(b.updatedAt);
       }
       // default date_desc
-      return parseDate(b.updatedAt) - parseDate(a.updatedAt);
+      return parseRecipeDate(b.updatedAt) - parseRecipeDate(a.updatedAt);
     });
 
   const activeSortObj = SORT_OPTIONS.find((s) => s.id === sortBy) || SORT_OPTIONS[0];
