@@ -101,4 +101,13 @@ export interface AppNotification {
   recipeId?: string;
 }
 
+export interface FinanceUser {
+  id: string;
+  username: string;
+  name: string;
+  pin: string;
+  avatarBg?: string;
+  createdAt: string;
+}
+
 

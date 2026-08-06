@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { WifiOff, Database, ShieldAlert } from 'lucide-react';
+import { WifiOff, Database, ShieldAlert, Lock, UserCheck, Settings as SettingsIcon } from 'lucide-react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { BottomNav } from './components/BottomNav';
@@ -14,14 +14,16 @@ import { IngredientsView } from './views/IngredientsView';
 import { AddIngredientView } from './views/AddIngredientView';
 import { SettingsView } from './views/SettingsView';
 import { BrowserView } from './views/BrowserView';
+import { CategoriesView } from './views/CategoriesView';
 
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { ChangePinModal } from './components/ChangePinModal';
 import { BatchAddShoppingModal } from './components/BatchAddShoppingModal';
 import { NotificationModal } from './components/NotificationModal';
+import { FinanceAuthModal } from './components/FinanceAuthModal';
 
 import { INITIAL_RECIPES, INITIAL_INGREDIENTS, INITIAL_CATEGORIES, INITIAL_SHOPPING_LIST, INITIAL_EXPENSES } from './data/mockData';
-import { ActiveTab, Category, IngredientItem, Recipe, ShoppingListItem, AppMode, ExpenseItem, AppNotification } from './types';
+import { ActiveTab, Category, IngredientItem, Recipe, ShoppingListItem, AppMode, ExpenseItem, AppNotification, FinanceUser } from './types';
 import { ExpenseTrackerView } from './views/ExpenseTrackerView';
 import {
   seedCollectionIfEmpty,
@@ -105,42 +107,224 @@ export default function App() {
     }
   }, [isAdmin, appMode]);
 
-  // Expenses State
-  const [expenses, setExpenses] = useState<ExpenseItem[]>(() => {
-    const saved = localStorage.getItem('app_expenses');
-    return saved ? JSON.parse(saved) : INITIAL_EXPENSES;
+  // Finance Accounts Management
+  const DEFAULT_FINANCE_USERS: FinanceUser[] = [
+    {
+      id: 'usr-hudode',
+      username: 'hudode',
+      name: 'Đỗ Đức Huy',
+      pin: '1004',
+      avatarBg: '#FF8FB8',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'usr-demo',
+      username: 'taikhoan_demo',
+      name: 'Tài Khoản Demo',
+      pin: '1234',
+      avatarBg: '#60A5FA',
+      createdAt: new Date().toISOString(),
+    },
+  ];
+
+  const [financeUsers, setFinanceUsers] = useState<FinanceUser[]>(() => {
+    const saved = localStorage.getItem('app_finance_users');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {
+        // Fallback
+      }
+    }
+    return DEFAULT_FINANCE_USERS;
   });
 
+  const [currentFinanceUser, setCurrentFinanceUser] = useState<FinanceUser | null>(() => {
+    const saved = localStorage.getItem('app_current_finance_user');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // Fallback
+      }
+    }
+    return DEFAULT_FINANCE_USERS[0];
+  });
+
+  const [isFinanceAuthModalOpen, setIsFinanceAuthModalOpen] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('app_finance_users', JSON.stringify(financeUsers));
+  }, [financeUsers]);
+
+  useEffect(() => {
+    if (currentFinanceUser) {
+      localStorage.setItem('app_current_finance_user', JSON.stringify(currentFinanceUser));
+    } else {
+      localStorage.removeItem('app_current_finance_user');
+    }
+  }, [currentFinanceUser]);
+
+  // Expenses State (Isolated Per Account)
+  const [expenses, setExpenses] = useState<ExpenseItem[]>(() => {
+    if (currentFinanceUser) {
+      const key = `app_expenses_${currentFinanceUser.username}`;
+      const saved = localStorage.getItem(key);
+      if (saved) return JSON.parse(saved);
+
+      if (currentFinanceUser.username === 'hudode') {
+        const oldSaved = localStorage.getItem('app_expenses');
+        if (oldSaved) {
+          const parsed = JSON.parse(oldSaved);
+          localStorage.setItem(key, oldSaved);
+          return parsed;
+        }
+      }
+      return INITIAL_EXPENSES;
+    }
+    return [];
+  });
+
+  // Load account-specific expenses when current user changes
+  useEffect(() => {
+    if (currentFinanceUser) {
+      const key = `app_expenses_${currentFinanceUser.username}`;
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        try {
+          setExpenses(JSON.parse(saved));
+        } catch (e) {
+          setExpenses([]);
+        }
+      } else {
+        setExpenses([]);
+      }
+    } else {
+      setExpenses([]);
+    }
+  }, [currentFinanceUser?.id]);
+
+  // Save expenses per account
+  useEffect(() => {
+    if (currentFinanceUser) {
+      const key = `app_expenses_${currentFinanceUser.username}`;
+      localStorage.setItem(key, JSON.stringify(expenses));
+    }
+  }, [expenses, currentFinanceUser?.username]);
+
   const handleAddExpense = (newItem: Omit<ExpenseItem, 'id' | 'createdAt'>) => {
+    if (!currentFinanceUser) {
+      setIsFinanceAuthModalOpen(true);
+      return;
+    }
     const item: ExpenseItem = {
       ...newItem,
       id: `exp-${Date.now()}`,
       createdAt: new Date().toISOString(),
     };
     setExpenses((prev) => [item, ...prev]);
-    syncSaveDoc('expenses', item);
+    syncSaveDoc(`expenses_${currentFinanceUser.username}`, item);
   };
 
   const handleDeleteExpense = (id: string) => {
+    if (!currentFinanceUser) return;
     setExpenses((prev) => prev.filter((item) => item.id !== id));
-    syncDeleteDoc('expenses', id);
+    syncDeleteDoc(`expenses_${currentFinanceUser.username}`, id);
   };
 
   const handleUpdateExpense = (updatedItem: ExpenseItem) => {
+    if (!currentFinanceUser) return;
     setExpenses((prev) =>
       prev.map((item) => (item.id === updatedItem.id ? updatedItem : item))
     );
-    syncSaveDoc('expenses', updatedItem);
+    syncSaveDoc(`expenses_${currentFinanceUser.username}`, updatedItem);
+  };
+
+  const handleExportFinanceData = () => {
+    if (!expenses || expenses.length === 0) {
+      alert('Chưa có dữ liệu thu chi nào để sao lưu!');
+      return;
+    }
+    const data = {
+      version: '1.0',
+      type: 'SoTayThuChi_Backup',
+      user: currentFinanceUser?.username || 'guest',
+      userName: currentFinanceUser?.name || 'Cá nhân',
+      exportedAt: new Date().toISOString(),
+      expenses,
+    };
+    const jsonStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const userTag = currentFinanceUser?.username ? `_${currentFinanceUser.username}` : '';
+    a.download = `sotay_thuchi_backup${userTag}_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportFinanceData = (importedItems: ExpenseItem[], mode: 'merge' | 'replace') => {
+    if (!currentFinanceUser) return;
+
+    if (mode === 'replace') {
+      setExpenses(importedItems);
+    } else {
+      setExpenses((prev) => {
+        const existingIds = new Set(prev.map((i) => i.id));
+        const newUnique = importedItems.filter((i) => !existingIds.has(i.id));
+        return [...newUnique, ...prev];
+      });
+    }
+
+    importedItems.forEach((item) => {
+      syncSaveDoc(`expenses_${currentFinanceUser.username}`, item);
+    });
+  };
+
+  const handleFinanceLogin = (user: FinanceUser, inputPin: string): boolean => {
+    if (user.pin === inputPin) {
+      setCurrentFinanceUser(user);
+      setIsFinanceAuthModalOpen(false);
+      return true;
+    }
+    return false;
+  };
+
+  const handleCreateFinanceAccount = (
+    newUser: Omit<FinanceUser, 'id' | 'createdAt'>
+  ): boolean => {
+    const created: FinanceUser = {
+      ...newUser,
+      id: `usr-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+    setFinanceUsers((prev) => [...prev, created]);
+    setCurrentFinanceUser(created);
+    setIsFinanceAuthModalOpen(false);
+    return true;
+  };
+
+  const handleLogoutFinanceUser = () => {
+    setCurrentFinanceUser(null);
+    setExpenses([]);
+  };
+
+  const handleDeleteFinanceAccount = (userId: string) => {
+    setFinanceUsers((prev) => prev.filter((u) => u.id !== userId));
+    if (currentFinanceUser?.id === userId) {
+      setCurrentFinanceUser(null);
+      setExpenses([]);
+    }
   };
 
   // Save to LocalStorage
   useEffect(() => {
     localStorage.setItem('app_mode', appMode);
   }, [appMode]);
-
-  useEffect(() => {
-    localStorage.setItem('app_expenses', JSON.stringify(expenses));
-  }, [expenses]);
 
   // Persistence state
   const [recipes, setRecipes] = useState<Recipe[]>(() => {
@@ -498,16 +682,8 @@ export default function App() {
 
   // Navigation Handlers
   const handleTabChange = (tab: ActiveTab) => {
-    if (!isAdmin) {
-      if (tab === 'browser') {
-        setAdminNoticeMsg('Chỉ Admin mới được phép truy cập');
-        return;
-      }
-      if (tab === 'settings') {
-        setPendingAdminTab('settings');
-        setIsAdminLoginOpen(true);
-        return;
-      }
+    if (tab === 'browser' && !currentFinanceUser) {
+      setIsFinanceAuthModalOpen(true);
     }
 
     setActiveTab(tab);
@@ -645,11 +821,42 @@ export default function App() {
   const handleAddCategory = (newCat: Category) => {
     setCategories((prev) => [...prev, newCat]);
     syncSaveDoc('categories', newCat);
+    addNotification('add', 'Thêm danh mục', `Danh mục "${newCat.name}" vừa được tạo thành công.`);
+  };
+
+  const handleUpdateCategory = (updatedCat: Category, oldName?: string) => {
+    setCategories((prev) => prev.map((c) => (c.id === updatedCat.id ? updatedCat : c)));
+    syncSaveDoc('categories', updatedCat);
+
+    if (oldName && oldName !== updatedCat.name) {
+      if (updatedCat.type === 'recipe' || (!updatedCat.type && updatedCat.type !== 'ingredient' && updatedCat.type !== 'unit')) {
+        setRecipes((prev) => {
+          const next = prev.map((r) => (r.category === oldName ? { ...r, category: updatedCat.name } : r));
+          next.forEach((r) => {
+            if (r.category === updatedCat.name) syncSaveDoc('recipes', r);
+          });
+          return next;
+        });
+      } else if (updatedCat.type === 'ingredient') {
+        setIngredients((prev) => {
+          const next = prev.map((i) => (i.category === oldName ? { ...i, category: updatedCat.name } : i));
+          next.forEach((i) => {
+            if (i.category === updatedCat.name) syncSaveDoc('ingredients', i);
+          });
+          return next;
+        });
+      }
+    }
+
+    addNotification('edit', 'Cập nhật danh mục', `Danh mục "${updatedCat.name}" đã được cập nhật.`);
   };
 
   const handleDeleteCategory = (categoryId: string) => {
+    const target = categories.find((c) => c.id === categoryId);
+    const name = target ? target.name : 'Danh mục';
     setCategories((prev) => prev.filter((c) => c.id !== categoryId));
     syncDeleteDoc('categories', categoryId);
+    addNotification('delete', 'Đã xóa danh mục', `Danh mục "${name}" đã được xóa khỏi hệ thống.`);
   };
 
   const handleResetData = () => {
@@ -796,13 +1003,40 @@ export default function App() {
           {/* Main View Scroll Area */}
           <main className="flex-1 overflow-y-auto no-scrollbar">
             {isAdmin && appMode === 'finance' && subView === 'none' ? (
-              <ExpenseTrackerView
-                expenses={expenses}
-                onAddExpense={handleAddExpense}
-                onDeleteExpense={handleDeleteExpense}
-                onUpdateExpense={handleUpdateExpense}
-                onSwitchMode={setAppMode}
-              />
+              currentFinanceUser ? (
+                <ExpenseTrackerView
+                  expenses={expenses}
+                  onAddExpense={handleAddExpense}
+                  onDeleteExpense={handleDeleteExpense}
+                  onUpdateExpense={handleUpdateExpense}
+                  onSwitchMode={setAppMode}
+                  currentUser={currentFinanceUser}
+                  onOpenFinanceAuth={() => setIsFinanceAuthModalOpen(true)}
+                  onExportFinanceData={handleExportFinanceData}
+                  onImportFinanceData={handleImportFinanceData}
+                />
+              ) : (
+                <div className="p-8 max-w-md mx-auto text-center space-y-4 my-12 animate-fade-in bg-white rounded-3xl border border-pink-100 shadow-sm">
+                  <div className="w-16 h-16 rounded-3xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center mx-auto shadow-sm">
+                    <Lock className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-800 text-lg">Yêu cầu Đăng nhập Thu Chi</h3>
+                    <p className="text-xs text-slate-500 font-medium mt-1">
+                      Đăng nhập tài khoản cá nhân để xem và quản lý sổ chi tiêu riêng biệt của bạn.
+                    </p>
+                  </div>
+                  <div className="pt-2 space-y-2">
+                    <button
+                      onClick={() => setIsFinanceAuthModalOpen(true)}
+                      className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-extrabold text-xs shadow-md shadow-indigo-200 transition-all flex items-center justify-center gap-2"
+                    >
+                      <UserCheck className="w-4 h-4" />
+                      <span>Đăng nhập hoặc Tạo tài khoản</span>
+                    </button>
+                  </div>
+                </div>
+              )
             ) : subView === 'recipe_detail' && selectedRecipe ? (
               <RecipeDetailView
                 recipe={selectedRecipe}
@@ -826,6 +1060,7 @@ export default function App() {
                 availableIngredients={ingredients}
                 onSave={handleSaveRecipe}
                 onSaveIngredient={handleSaveIngredient}
+                onAddCategory={handleAddCategory}
                 onCancel={() => setSubView('none')}
               />
             ) : subView === 'edit_recipe' && selectedRecipe ? (
@@ -835,6 +1070,7 @@ export default function App() {
                 availableIngredients={ingredients}
                 onSave={handleSaveRecipe}
                 onSaveIngredient={handleSaveIngredient}
+                onAddCategory={handleAddCategory}
                 onCancel={() => setSubView('recipe_detail')}
               />
             ) : subView === 'add_ingredient' ? (
@@ -889,17 +1125,74 @@ export default function App() {
                     onAddRecipe={handleStartAddRecipe}
                     onEditRecipe={handleStartEditRecipe}
                     onDeleteRecipe={handleDeleteRecipe}
+                    onManageCategories={() => handleTabChange('categories')}
+                  />
+                )}
+
+                {activeTab === 'categories' && (
+                  <CategoriesView
+                    categories={categories}
+                    recipes={recipes}
+                    ingredients={ingredients}
+                    isAdmin={isAdmin}
+                    onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
+                    onAddCategory={handleAddCategory}
+                    onUpdateCategory={handleUpdateCategory}
+                    onDeleteCategory={handleDeleteCategory}
+                    onSelectCategoryFilter={(catName, type) => {
+                      if (type === 'recipe') {
+                        setSelectedRecipeCategory(catName);
+                        handleTabChange('recipes');
+                      } else {
+                        setSelectedIngredientCategory(catName);
+                        handleTabChange('ingredients');
+                      }
+                    }}
                   />
                 )}
 
                 {activeTab === 'browser' && (
-                  <ExpenseTrackerView
-                    expenses={expenses}
-                    onAddExpense={handleAddExpense}
-                    onDeleteExpense={handleDeleteExpense}
-                    onUpdateExpense={handleUpdateExpense}
-                    onSwitchMode={setAppMode}
-                  />
+                  currentFinanceUser ? (
+                    <ExpenseTrackerView
+                      expenses={expenses}
+                      onAddExpense={handleAddExpense}
+                      onDeleteExpense={handleDeleteExpense}
+                      onUpdateExpense={handleUpdateExpense}
+                      onSwitchMode={setAppMode}
+                      currentUser={currentFinanceUser}
+                      onOpenFinanceAuth={() => setIsFinanceAuthModalOpen(true)}
+                      onExportFinanceData={handleExportFinanceData}
+                      onImportFinanceData={handleImportFinanceData}
+                    />
+                  ) : (
+                    <div className="p-8 max-w-md mx-auto text-center space-y-4 my-12 animate-fade-in bg-white rounded-3xl border border-pink-100 shadow-sm">
+                      <div className="w-16 h-16 rounded-3xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center mx-auto shadow-sm">
+                        <Lock className="w-8 h-8" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-slate-800 text-lg">Yêu cầu Đăng nhập Thu Chi</h3>
+                        <p className="text-xs text-slate-500 font-medium mt-1">
+                          Vui lòng đăng nhập tài khoản cá nhân để xem và quản lý sổ chi tiêu riêng biệt.
+                        </p>
+                      </div>
+                      <div className="pt-2 space-y-2">
+                        <button
+                          onClick={() => setIsFinanceAuthModalOpen(true)}
+                          className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-extrabold text-xs shadow-md shadow-indigo-200 transition-all flex items-center justify-center gap-2"
+                        >
+                          <UserCheck className="w-4 h-4" />
+                          <span>Đăng nhập hoặc Tạo tài khoản</span>
+                        </button>
+                        <button
+                          onClick={() => handleTabChange('settings')}
+                          className="w-full py-2.5 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <SettingsIcon className="w-4 h-4 text-slate-500" />
+                          <span>Quản lý trong Cài đặt</span>
+                        </button>
+                      </div>
+                    </div>
+                  )
                 )}
 
                 {activeTab === 'ingredients' && (
@@ -932,6 +1225,13 @@ export default function App() {
                     onResetData={handleResetData}
                     onClearExpenseData={handleClearExpenseData}
                     onImportData={handleImportData}
+                    financeUsers={financeUsers}
+                    currentFinanceUser={currentFinanceUser}
+                    onOpenFinanceAuth={() => setIsFinanceAuthModalOpen(true)}
+                    onLogoutFinanceUser={handleLogoutFinanceUser}
+                    onDeleteFinanceAccount={handleDeleteFinanceAccount}
+                    onExportFinanceData={handleExportFinanceData}
+                    onImportFinanceData={handleImportFinanceData}
                   />
                 )}
               </>
@@ -991,6 +1291,17 @@ export default function App() {
           onClose={() => setIsChangePinOpen(false)}
           currentPin={adminPin}
           onChangePin={handleChangeAdminPin}
+        />
+
+        {/* Finance Accounts Login/Register Modal */}
+        <FinanceAuthModal
+          isOpen={isFinanceAuthModalOpen}
+          onClose={() => setIsFinanceAuthModalOpen(false)}
+          users={financeUsers}
+          currentUser={currentFinanceUser}
+          onLogin={handleFinanceLogin}
+          onCreateAccount={handleCreateFinanceAccount}
+          onNavigateToSettings={() => handleTabChange('settings')}
         />
 
         {/* Activity Notifications Modal */}

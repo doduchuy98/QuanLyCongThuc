@@ -38,10 +38,14 @@ import {
   ChevronDown,
   ChevronUp,
   History,
+  Download,
+  Upload,
+  Database,
 } from 'lucide-react';
-import { ExpenseItem, AppMode } from '../types';
+import { ExpenseItem, AppMode, FinanceUser } from '../types';
 import { CuteDeleteModal } from '../components/CuteDeleteModal';
 import { formatCurrency } from '../utils/costUtils';
+import { UserCheck } from 'lucide-react';
 
 interface ExpenseTrackerViewProps {
   expenses: ExpenseItem[];
@@ -49,6 +53,10 @@ interface ExpenseTrackerViewProps {
   onDeleteExpense: (id: string) => void;
   onUpdateExpense?: (item: ExpenseItem) => void;
   onSwitchMode: (mode: AppMode) => void;
+  currentUser?: FinanceUser | null;
+  onOpenFinanceAuth?: () => void;
+  onExportFinanceData?: () => void;
+  onImportFinanceData?: (imported: ExpenseItem[], mode: 'merge' | 'replace') => void;
 }
 
 const EXPENSE_CATEGORIES = [
@@ -82,6 +90,10 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
   onDeleteExpense,
   onUpdateExpense,
   onSwitchMode,
+  currentUser,
+  onOpenFinanceAuth,
+  onExportFinanceData,
+  onImportFinanceData,
 }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'expense' | 'income' | 'loan'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -89,6 +101,49 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
   const [selectedYearFilter, setSelectedYearFilter] = useState<string>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [expToDelete, setExpToDelete] = useState<ExpenseItem | null>(null);
+
+  const handleImportJsonFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const parsed = JSON.parse(content);
+        let items: ExpenseItem[] = [];
+
+        if (Array.isArray(parsed)) {
+          items = parsed;
+        } else if (parsed && Array.isArray(parsed.expenses)) {
+          items = parsed.expenses;
+        } else {
+          alert('Cấu trúc file sao lưu thu chi không hợp lệ!');
+          return;
+        }
+
+        if (items.length === 0) {
+          alert('File sao lưu không chứa bản ghi thu/chi nào!');
+          return;
+        }
+
+        const isReplace = confirm(
+          `Tìm thấy ${items.length} bản ghi thu/chi trong file sao lưu.\n\n` +
+            `• Bấm [OK] để THAY THẾ toàn bộ dữ liệu thu/chi hiện tại.\n` +
+            `• Bấm [Hủy/Cancel] để GỘP THÊM vào dữ liệu hiện tại.`
+        );
+
+        if (onImportFinanceData) {
+          onImportFinanceData(items, isReplace ? 'replace' : 'merge');
+          alert(`Đã ${isReplace ? 'khôi phục' : 'gộp thêm'} ${items.length} bản ghi thu/chi thành công!`);
+        }
+      } catch (err) {
+        alert('Lỗi đọc file sao lưu. Vui lòng kiểm tra định dạng file JSON!');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   // Helper to parse year and month from date string
   const parseYearMonth = (dateStr: string) => {
@@ -535,6 +590,72 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
 
   return (
     <div className="p-4 space-y-5 pb-28 max-w-5xl mx-auto animate-fade-in">
+
+      {/* Account User Header Pill Bar */}
+      {currentUser && (
+        <div className="bg-white p-3 rounded-2xl border border-indigo-100 shadow-2xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div
+              className="w-8 h-8 rounded-xl font-black text-white text-xs flex items-center justify-center shrink-0 shadow-2xs"
+              style={{ backgroundColor: currentUser.avatarBg || '#FF8FB8' }}
+            >
+              {currentUser.name.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-slate-800 text-xs truncate">
+                  {currentUser.name}
+                </span>
+                <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.2 rounded-md shrink-0">
+                  Sổ cá nhân
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400 font-medium truncate">
+                @{currentUser.username} • Dữ liệu lưu riêng biệt
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {onExportFinanceData && (
+              <button
+                onClick={onExportFinanceData}
+                className="py-1.5 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] rounded-xl border border-emerald-200/80 transition-all flex items-center gap-1 shrink-0"
+                title="Sao lưu dữ liệu JSON"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="hidden sm:inline">Sao lưu</span>
+              </button>
+            )}
+
+            {onImportFinanceData && (
+              <label
+                className="py-1.5 px-2.5 bg-white hover:bg-slate-50 text-slate-700 font-bold text-[11px] rounded-xl border border-slate-200 transition-all flex items-center gap-1 shrink-0 cursor-pointer shadow-2xs"
+                title="Khôi phục dữ liệu từ JSON"
+              >
+                <Upload className="w-3.5 h-3.5 text-indigo-600" />
+                <span className="hidden sm:inline">Khôi phục</span>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImportJsonFile}
+                  className="hidden"
+                />
+              </label>
+            )}
+
+            {onOpenFinanceAuth && (
+              <button
+                onClick={onOpenFinanceAuth}
+                className="py-1.5 px-2.5 sm:px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[11px] rounded-xl border border-indigo-200/80 transition-all flex items-center gap-1 shrink-0"
+              >
+                <UserCheck className="w-3.5 h-3.5" />
+                <span>Đổi tài khoản</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Financial Overview Cards Section */}
       <div className="space-y-3">

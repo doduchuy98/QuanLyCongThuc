@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, ChefHat, Settings, Plus, ShieldCheck, Sparkles, Wallet, PiggyBank, Utensils, Carrot, Table, Heart } from 'lucide-react';
+import { Home, ChefHat, Settings, Plus, ShieldCheck, Sparkles, Wallet, PiggyBank, Utensils, Carrot, Table, Heart, LayoutGrid, Lock } from 'lucide-react';
 import { ActiveTab, AppMode } from '../types';
 
 interface SidebarProps {
@@ -8,6 +8,7 @@ interface SidebarProps {
   recipesCount: number;
   ingredientsCount: number;
   categoriesCount: number;
+  shoppingListUnboughtCount?: number;
   isAdmin?: boolean;
   onOpenAdminLogin?: () => void;
   onLogoutAdmin?: () => void;
@@ -27,7 +28,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenAdminLogin,
   onLogoutAdmin,
   onQuickAddClick,
-  onOpenUnitConverter,
   appMode = 'kitchen',
   onToggleAppMode,
 }) => {
@@ -35,6 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems = [
     { id: 'home' as ActiveTab, label: 'Trang chủ', icon: Home, count: null },
     { id: 'recipes' as ActiveTab, label: 'Công thức', icon: ChefHat, count: recipesCount },
+    { id: 'categories' as ActiveTab, label: 'Danh mục công thức', icon: LayoutGrid, count: categoriesCount },
     { id: 'ingredients' as ActiveTab, label: 'Nguyên liệu (Bảng tính)', icon: Carrot, count: ingredientsCount },
     { id: 'browser' as ActiveTab, label: 'Thu/Chi', icon: Wallet, count: null },
     { id: 'settings' as ActiveTab, label: 'Cài đặt & Dữ liệu', icon: Settings, count: null },

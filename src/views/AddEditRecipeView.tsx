@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Upload, Plus, Trash2, Check, Sparkles, Search, Carrot, X, ImageOff } from 'lucide-react';
+import { Upload, Plus, Trash2, Check, Sparkles, Search, Carrot, X, ImageOff, FolderPlus } from 'lucide-react';
 import { Category, IngredientItem, Recipe, RecipeIngredient, CookingStep } from '../types';
 import { matchesSearch, removeVietnameseTones, capitalizeWords } from '../utils/stringUtils';
 import { CuteDeleteModal } from '../components/CuteDeleteModal';
+import { CategoryModal } from '../components/CategoryModal';
 
 interface AddEditRecipeViewProps {
   recipeToEdit?: Recipe | null;
@@ -10,6 +11,7 @@ interface AddEditRecipeViewProps {
   availableIngredients: IngredientItem[];
   onSave: (recipe: Recipe) => void;
   onSaveIngredient?: (ingredient: IngredientItem) => void;
+  onAddCategory?: (category: Category) => void;
   onCancel: () => void;
 }
 
@@ -52,6 +54,7 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
   availableIngredients,
   onSave,
   onSaveIngredient,
+  onAddCategory,
   onCancel,
 }) => {
   const recipeCategories = categories.filter(
@@ -68,6 +71,7 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
   const [isActive, setIsActive] = useState(recipeToEdit?.isActive ?? true);
   const [portionLabel, setPortionLabel] = useState(recipeToEdit?.portionLabel || '1 phần');
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'ingredient' | 'step'; index: number; name: string } | null>(null);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -344,9 +348,19 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">
-            Danh mục món ăn <span className="text-rose-500">*</span>
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs font-bold text-slate-700">
+              Danh mục món ăn <span className="text-rose-500">*</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => setIsCategoryModalOpen(true)}
+              className="text-xs font-extrabold text-[#FF8FB8] hover:underline flex items-center gap-1"
+            >
+              <FolderPlus className="w-3.5 h-3.5" />
+              <span>+ Thêm danh mục</span>
+            </button>
+          </div>
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
@@ -675,6 +689,19 @@ export const AddEditRecipeView: React.FC<AddEditRecipeViewProps> = ({
           }
         }}
         onClose={() => setDeleteTarget(null)}
+      />
+
+      {/* CATEGORY MODAL */}
+      <CategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        defaultType="recipe"
+        onSave={(newCat) => {
+          if (onAddCategory) {
+            onAddCategory(newCat);
+          }
+          setCategory(newCat.name);
+        }}
       />
     </form>
   );

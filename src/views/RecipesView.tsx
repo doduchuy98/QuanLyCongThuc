@@ -11,6 +11,8 @@ export type SortOption = 'date_desc' | 'date_asc' | 'name_asc' | 'name_desc' | '
 interface RecipesViewProps {
   recipes: Recipe[];
   categories: Category[];
+  selectedCategory?: string;
+  onSelectCategory?: (category: string) => void;
   allIngredients?: IngredientItem[];
   isAdmin?: boolean;
   onOpenAdminLogin?: () => void;
@@ -18,6 +20,7 @@ interface RecipesViewProps {
   onAddRecipe: () => void;
   onEditRecipe: (recipeId: string) => void;
   onDeleteRecipe: (recipeId: string) => void;
+  onManageCategories?: () => void;
 }
 
 const SORT_OPTIONS: { id: SortOption; label: string; subLabel: string; icon: string }[] = [
@@ -31,6 +34,8 @@ const SORT_OPTIONS: { id: SortOption; label: string; subLabel: string; icon: str
 export const RecipesView: React.FC<RecipesViewProps> = ({
   recipes,
   categories,
+  selectedCategory: propSelectedCategory,
+  onSelectCategory: propOnSelectCategory,
   allIngredients = [],
   isAdmin,
   onOpenAdminLogin,
@@ -38,6 +43,7 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
   onAddRecipe,
   onEditRecipe,
   onDeleteRecipe,
+  onManageCategories,
 }) => {
   const handleProtectedAddRecipe = () => {
     if (!isAdmin && onOpenAdminLogin) {
@@ -62,7 +68,16 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
       onDeleteRecipe(id);
     }
   };
-  const [selectedCategory, setSelectedCategory] = useState<string>('Tất cả');
+  const [internalSelectedCategory, setInternalSelectedCategory] = useState<string>('Tất cả');
+  const activeCategory = propSelectedCategory ?? internalSelectedCategory;
+  const handleSelectCat = (catName: string) => {
+    if (propOnSelectCategory) {
+      propOnSelectCategory(catName);
+    } else {
+      setInternalSelectedCategory(catName);
+    }
+  };
+
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<SortOption>('date_desc');
   const [isSortMenuOpen, setIsSortMenuOpen] = useState<boolean>(false);
@@ -106,7 +121,7 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
   const filteredRecipes = recipes
     .filter((r) => {
       const matchesCategory =
-        selectedCategory === 'Tất cả' || r.category === selectedCategory;
+        activeCategory === 'Tất cả' || r.category === activeCategory;
       const q = searchQuery.trim();
       const matchesSearchQuery =
         !q ||
@@ -226,13 +241,13 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
       </div>
 
       {/* Category Filter Chips */}
-      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 pt-0.5">
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 pt-0.5">
         {filterCategories.map((cat) => {
-          const isSelected = selectedCategory === cat;
+          const isSelected = activeCategory === cat;
           return (
             <button
               key={cat}
-              onClick={() => setSelectedCategory(cat)}
+              onClick={() => handleSelectCat(cat)}
               className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 shadow-2xs ${
                 isSelected
                   ? 'bg-[#FF8FB8] text-white shadow-pink-200 shadow-sm scale-102'
@@ -243,6 +258,16 @@ export const RecipesView: React.FC<RecipesViewProps> = ({
             </button>
           );
         })}
+
+        {onManageCategories && (
+          <button
+            onClick={onManageCategories}
+            className="px-3.5 py-1.5 rounded-full text-xs font-extrabold whitespace-nowrap bg-pink-50 text-[#FF8FB8] border border-pink-200 hover:bg-pink-100 transition-all flex items-center gap-1 shadow-2xs shrink-0"
+            title="Quản lý & Thêm danh mục mới"
+          >
+            <span>⚙️ Quản lý danh mục</span>
+          </button>
+        )}
       </div>
 
       {/* Active Sort Status Indicator */}
