@@ -182,29 +182,52 @@ export default function App() {
     if (currentFinanceUser) {
       const key = `app_expenses_${currentFinanceUser.username}`;
       const saved = localStorage.getItem(key);
-      if (saved) return JSON.parse(saved);
-
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          return [];
+        }
+      }
       if (currentFinanceUser.username === 'hudode') {
         const oldSaved = localStorage.getItem('app_expenses');
         if (oldSaved) {
-          const parsed = JSON.parse(oldSaved);
-          localStorage.setItem(key, oldSaved);
-          return parsed;
+          try {
+            const parsed = JSON.parse(oldSaved);
+            localStorage.setItem(key, oldSaved);
+            return parsed;
+          } catch (e) {}
         }
       }
-      return INITIAL_EXPENSES;
+      return [];
     }
     return [];
   });
 
-  // Load account-specific expenses when current user changes
+  // Load & subscribe account-specific expenses when current user changes
   useEffect(() => {
-    if (currentFinanceUser) {
-      const key = `app_expenses_${currentFinanceUser.username}`;
-      const saved = localStorage.getItem(key);
-      if (saved) {
+    if (!currentFinanceUser) {
+      setExpenses([]);
+      return;
+    }
+
+    const key = `app_expenses_${currentFinanceUser.username}`;
+    const userCol = `expenses_${currentFinanceUser.username}`;
+
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        setExpenses(JSON.parse(saved));
+      } catch (e) {
+        setExpenses([]);
+      }
+    } else if (currentFinanceUser.username === 'hudode') {
+      const oldSaved = localStorage.getItem('app_expenses');
+      if (oldSaved) {
         try {
-          setExpenses(JSON.parse(saved));
+          const parsed = JSON.parse(oldSaved);
+          setExpenses(parsed);
+          localStorage.setItem(key, oldSaved);
         } catch (e) {
           setExpenses([]);
         }
@@ -214,7 +237,22 @@ export default function App() {
     } else {
       setExpenses([]);
     }
-  }, [currentFinanceUser?.id]);
+
+    // Subscribe to Firestore collection for this specific user
+    const unsub = subscribeCollection<ExpenseItem>(
+      userCol,
+      (remoteExp) => {
+        if (!remoteExp) return;
+        const sorted = [...remoteExp].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setExpenses(sorted);
+        localStorage.setItem(key, JSON.stringify(sorted));
+      }
+    );
+
+    return () => {
+      unsub();
+    };
+  }, [currentFinanceUser?.username]);
 
   // Save expenses per account
   useEffect(() => {
@@ -468,16 +506,12 @@ export default function App() {
       const savedShopStr = localStorage.getItem('app_shopping_list');
       const localShop: ShoppingListItem[] = savedShopStr ? JSON.parse(savedShopStr) : INITIAL_SHOPPING_LIST;
 
-      const savedExpStr = localStorage.getItem('app_expenses');
-      const localExp: ExpenseItem[] = savedExpStr ? JSON.parse(savedExpStr) : INITIAL_EXPENSES;
-
       // 2. Seed initial data if Firestore collections are empty (preferring user local storage data)
       await Promise.all([
         seedCollectionIfEmpty('recipes', localRecipes),
         seedCollectionIfEmpty('ingredients', localIngs),
         seedCollectionIfEmpty('categories', localCats),
         seedCollectionIfEmpty('shoppingList', localShop),
-        seedCollectionIfEmpty('expenses', localExp),
       ]);
 
       if (!isMounted) return;
@@ -525,20 +559,6 @@ export default function App() {
           (remoteShop) => {
             if (!isMounted || !remoteShop) return;
             setShoppingList(remoteShop);
-            setIsCloudSynced(true);
-          },
-          () => setIsCloudSynced(false)
-        )
-      );
-
-      unsubs.push(
-        subscribeCollection<ExpenseItem>(
-          'expenses',
-          (remoteExp) => {
-            if (!isMounted || !remoteExp) return;
-            // Sap xep chi tieu theo ngay moi nhat len dau
-            const sorted = [...remoteExp].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            setExpenses(sorted);
             setIsCloudSynced(true);
           },
           () => setIsCloudSynced(false)
@@ -875,12 +895,16 @@ export default function App() {
     setIngredients(INITIAL_INGREDIENTS);
     setCategories(INITIAL_CATEGORIES);
     setShoppingList(INITIAL_SHOPPING_LIST);
-    setExpenses(INITIAL_EXPENSES);
+    setExpenses([]);
     syncReplaceCollection('recipes', INITIAL_RECIPES);
     syncReplaceCollection('ingredients', INITIAL_INGREDIENTS);
     syncReplaceCollection('categories', INITIAL_CATEGORIES);
     syncReplaceCollection('shoppingList', INITIAL_SHOPPING_LIST);
-    syncReplaceCollection('expenses', INITIAL_EXPENSES);
+    if (currentFinanceUser) {
+      syncReplaceCollection(`expenses_${currentFinanceUser.username}`, []);
+    } else {
+      syncReplaceCollection('expenses', []);
+    }
     localStorage.clear();
     setSubView('none');
     setActiveTab('home');
@@ -888,8 +912,15 @@ export default function App() {
 
   const handleClearExpenseData = () => {
     setExpenses([]);
-    syncReplaceCollection('expenses', []);
-    localStorage.removeItem('app_expenses');
+    if (currentFinanceUser) {
+      const userCol = `expenses_${currentFinanceUser.username}`;
+      const key = `app_expenses_${currentFinanceUser.username}`;
+      syncReplaceCollection(userCol, []);
+      localStorage.removeItem(key);
+    } else {
+      syncReplaceCollection('expenses', []);
+      localStorage.removeItem('app_expenses');
+    }
     localStorage.removeItem('app_lending_balance');
   };
 
