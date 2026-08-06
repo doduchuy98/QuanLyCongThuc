@@ -101,6 +101,29 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
   const [selectedYearFilter, setSelectedYearFilter] = useState<string>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [expToDelete, setExpToDelete] = useState<ExpenseItem | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+
+  useEffect(() => {
+    setIsLoading(true);
+    setLoadingProgress(0);
+
+    const interval = setInterval(() => {
+      setLoadingProgress((prev) => {
+        if (prev >= 100) return 100;
+        return prev + 5;
+      });
+    }, 150);
+
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 3000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, [currentUser?.id]);
 
   const handleImportJsonFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -587,6 +610,90 @@ export const ExpenseTrackerView: React.FC<ExpenseTrackerViewProps> = ({
     if (foundLoan) return foundLoan.icon;
     return Tag;
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-4 space-y-5 pb-28 max-w-5xl mx-auto animate-fade-in">
+        {/* Page Loading Screen Header */}
+        <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-8 rounded-3xl text-white shadow-xl relative overflow-hidden flex flex-col items-center justify-center text-center space-y-4 min-h-[240px]">
+          <div className="absolute -top-10 -right-10 w-44 h-44 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute -bottom-10 -left-10 w-44 h-44 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none" />
+
+          <div className="relative">
+            <div className="w-16 h-16 rounded-3xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-emerald-400 shadow-inner animate-bounce">
+              <Wallet className="w-8 h-8 text-emerald-400" />
+            </div>
+            <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center shadow-xs">
+              <Sparkles className="w-3 h-3 text-white" />
+            </div>
+          </div>
+
+          <div className="space-y-1.5 max-w-md">
+            <h3 className="font-extrabold text-lg text-white tracking-tight flex items-center justify-center gap-2">
+              <span>Đang tải Sổ Thu Chi...</span>
+            </h3>
+            {currentUser ? (
+              <p className="text-xs text-indigo-200 font-medium">
+                Đang nạp dữ liệu thu chi cho tài khoản <span className="font-bold text-emerald-300">@{currentUser.username}</span> ({currentUser.name})
+              </p>
+            ) : (
+              <p className="text-xs text-indigo-200 font-medium">
+                Đang tải dữ liệu thu chi cá nhân...
+              </p>
+            )}
+          </div>
+
+          {/* Animated Spinner Progress Indicator */}
+          <div className="w-56 space-y-1.5">
+            <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden relative p-0.5 border border-white/10">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-400 via-teal-300 to-indigo-400 rounded-full transition-all duration-200 ease-out"
+                style={{ width: `${loadingProgress}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[11px] font-bold text-indigo-200/80 px-1">
+              <span>Đang khởi tạo...</span>
+              <span className="text-emerald-300 font-mono">{loadingProgress}%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Skeleton Overview Metric Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-2xs space-y-3 animate-pulse">
+              <div className="flex items-center justify-between">
+                <div className="w-20 h-3 bg-slate-200 rounded-md" />
+                <div className="w-8 h-8 bg-slate-100 rounded-xl" />
+              </div>
+              <div className="w-28 h-6 bg-slate-200 rounded-lg" />
+              <div className="w-16 h-2.5 bg-slate-100 rounded-md" />
+            </div>
+          ))}
+        </div>
+
+        {/* Skeleton Transaction List */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-2xs space-y-3 animate-pulse">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <div className="w-32 h-4 bg-slate-200 rounded-md" />
+            <div className="w-16 h-4 bg-slate-100 rounded-md" />
+          </div>
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center justify-between py-2.5 border-b border-slate-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-slate-100 rounded-2xl" />
+                <div className="space-y-1.5">
+                  <div className="w-28 h-3.5 bg-slate-200 rounded-md" />
+                  <div className="w-16 h-2.5 bg-slate-100 rounded-md" />
+                </div>
+              </div>
+              <div className="w-20 h-4 bg-slate-200 rounded-md" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 space-y-5 pb-28 max-w-5xl mx-auto animate-fade-in">
