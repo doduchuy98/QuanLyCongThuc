@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, ChefHat, Settings, Wallet, Plus } from 'lucide-react';
+import { Home, ChefHat, Settings, Wallet, Plus, Lock } from 'lucide-react';
 import { ActiveTab } from '../types';
 
 interface BottomNavProps {
@@ -112,6 +112,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                       isActive ? 'scale-110 stroke-[2.5] drop-shadow-[0_2px_6px_rgba(255,71,133,0.35)]' : 'stroke-[1.8]'
                     }`}
                   />
+                  {!isAdmin && (
+                    <span className="absolute -top-1 -right-2 w-3 h-3 rounded-full bg-slate-800 text-amber-300 flex items-center justify-center border border-white text-[8px] shadow-xs">
+                      <Lock className="w-2 h-2 stroke-[2.5]" />
+                    </span>
+                  )}
                 </div>
                 <span className="text-[10px] mt-0.5 tracking-tight leading-none">
                   {tab.label}

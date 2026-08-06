@@ -48,6 +48,12 @@ export default function App() {
     return saved;
   });
 
+  // Navigation State
+  const [activeTab, setActiveTab] = useState<ActiveTab>('home');
+  const [subView, setSubView] = useState<'none' | 'recipe_detail' | 'add_recipe' | 'edit_recipe' | 'add_ingredient' | 'edit_ingredient'>('none');
+  const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
+  const [selectedIngredient, setSelectedIngredient] = useState<IngredientItem | null>(null);
+
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
   const [isChangePinOpen, setIsChangePinOpen] = useState(false);
   const [adminNoticeMsg, setAdminNoticeMsg] = useState<string | null>(null);
@@ -100,12 +106,17 @@ export default function App() {
     });
   };
 
-  // Guard: If not admin, force mode back to kitchen
+  // Guard: If not admin, force mode back to kitchen and reset admin-only tabs
   useEffect(() => {
-    if (!isAdmin && appMode === 'finance') {
-      setAppMode('kitchen');
+    if (!isAdmin) {
+      if (appMode === 'finance') {
+        setAppMode('kitchen');
+      }
+      if (activeTab === 'browser' || activeTab === 'settings') {
+        setActiveTab('home');
+      }
     }
-  }, [isAdmin, appMode]);
+  }, [isAdmin, appMode, activeTab]);
 
   // Finance Accounts Management
   const DEFAULT_FINANCE_USERS: FinanceUser[] = [
@@ -543,12 +554,6 @@ export default function App() {
     };
   }, []);
 
-  // Navigation State
-  const [activeTab, setActiveTab] = useState<ActiveTab>('home');
-  const [subView, setSubView] = useState<'none' | 'recipe_detail' | 'add_recipe' | 'edit_recipe' | 'add_ingredient' | 'edit_ingredient'>('none');
-  const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
-  const [selectedIngredient, setSelectedIngredient] = useState<IngredientItem | null>(null);
-
   // Modals
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isBatchAddShoppingModalOpen, setIsBatchAddShoppingModalOpen] = useState(false);
@@ -682,6 +687,12 @@ export default function App() {
 
   // Navigation Handlers
   const handleTabChange = (tab: ActiveTab) => {
+    if ((tab === 'browser' || tab === 'settings') && !isAdmin) {
+      setPendingAdminTab(tab);
+      setIsAdminLoginOpen(true);
+      return;
+    }
+
     if (tab === 'browser' && !currentFinanceUser) {
       setIsFinanceAuthModalOpen(true);
     }
@@ -1152,7 +1163,31 @@ export default function App() {
                 )}
 
                 {activeTab === 'browser' && (
-                  currentFinanceUser ? (
+                  !isAdmin ? (
+                    <div className="p-8 max-w-md mx-auto text-center space-y-4 my-12 animate-fade-in bg-white rounded-3xl border border-pink-100 shadow-sm">
+                      <div className="w-16 h-16 rounded-3xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center mx-auto shadow-sm">
+                        <Lock className="w-8 h-8" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-slate-800 text-lg">Yêu cầu Quyền Admin</h3>
+                        <p className="text-xs text-slate-500 font-medium mt-1">
+                          Chỉ Quản trị viên (Admin) mới có quyền truy cập và quản lý Thu/Chi.
+                        </p>
+                      </div>
+                      <div className="pt-2">
+                        <button
+                          onClick={() => {
+                            setPendingAdminTab('browser');
+                            setIsAdminLoginOpen(true);
+                          }}
+                          className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-extrabold text-xs shadow-md shadow-pink-200 transition-all flex items-center justify-center gap-2"
+                        >
+                          <Lock className="w-4 h-4" />
+                          <span>Đăng nhập Admin (Nhập PIN)</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : currentFinanceUser ? (
                     <ExpenseTrackerView
                       expenses={expenses}
                       onAddExpense={handleAddExpense}
@@ -1183,13 +1218,6 @@ export default function App() {
                           <UserCheck className="w-4 h-4" />
                           <span>Đăng nhập hoặc Tạo tài khoản</span>
                         </button>
-                        <button
-                          onClick={() => handleTabChange('settings')}
-                          className="w-full py-2.5 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all flex items-center justify-center gap-1.5"
-                        >
-                          <SettingsIcon className="w-4 h-4 text-slate-500" />
-                          <span>Quản lý trong Cài đặt</span>
-                        </button>
                       </div>
                     </div>
                   )
@@ -1213,26 +1241,52 @@ export default function App() {
                 )}
 
                 {activeTab === 'settings' && (
-                  <SettingsView
-                    recipes={recipes}
-                    ingredients={ingredients}
-                    categories={categories}
-                    expenses={expenses}
-                    isAdmin={isAdmin}
-                    onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
-                    onLogoutAdmin={handleAdminLogout}
-                    onOpenChangePin={() => setIsChangePinOpen(true)}
-                    onResetData={handleResetData}
-                    onClearExpenseData={handleClearExpenseData}
-                    onImportData={handleImportData}
-                    financeUsers={financeUsers}
-                    currentFinanceUser={currentFinanceUser}
-                    onOpenFinanceAuth={() => setIsFinanceAuthModalOpen(true)}
-                    onLogoutFinanceUser={handleLogoutFinanceUser}
-                    onDeleteFinanceAccount={handleDeleteFinanceAccount}
-                    onExportFinanceData={handleExportFinanceData}
-                    onImportFinanceData={handleImportFinanceData}
-                  />
+                  !isAdmin ? (
+                    <div className="p-8 max-w-md mx-auto text-center space-y-4 my-12 animate-fade-in bg-white rounded-3xl border border-pink-100 shadow-sm">
+                      <div className="w-16 h-16 rounded-3xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center mx-auto shadow-sm">
+                        <Lock className="w-8 h-8" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-slate-800 text-lg">Yêu cầu Quyền Admin</h3>
+                        <p className="text-xs text-slate-500 font-medium mt-1">
+                          Chỉ Quản trị viên (Admin) mới có quyền truy cập Cài đặt hệ thống.
+                        </p>
+                      </div>
+                      <div className="pt-2">
+                        <button
+                          onClick={() => {
+                            setPendingAdminTab('settings');
+                            setIsAdminLoginOpen(true);
+                          }}
+                          className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-extrabold text-xs shadow-md shadow-pink-200 transition-all flex items-center justify-center gap-2"
+                        >
+                          <Lock className="w-4 h-4" />
+                          <span>Đăng nhập Admin (Nhập PIN)</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <SettingsView
+                      recipes={recipes}
+                      ingredients={ingredients}
+                      categories={categories}
+                      expenses={expenses}
+                      isAdmin={isAdmin}
+                      onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
+                      onLogoutAdmin={handleAdminLogout}
+                      onOpenChangePin={() => setIsChangePinOpen(true)}
+                      onResetData={handleResetData}
+                      onClearExpenseData={handleClearExpenseData}
+                      onImportData={handleImportData}
+                      financeUsers={financeUsers}
+                      currentFinanceUser={currentFinanceUser}
+                      onOpenFinanceAuth={() => setIsFinanceAuthModalOpen(true)}
+                      onLogoutFinanceUser={handleLogoutFinanceUser}
+                      onDeleteFinanceAccount={handleDeleteFinanceAccount}
+                      onExportFinanceData={handleExportFinanceData}
+                      onImportFinanceData={handleImportFinanceData}
+                    />
+                  )
                 )}
               </>
             )}

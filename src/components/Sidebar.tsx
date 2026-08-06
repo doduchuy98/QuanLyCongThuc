@@ -100,6 +100,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
+            const requiresAdmin = item.id === 'browser' || item.id === 'settings';
+
             return (
               <button
                 key={item.id}
@@ -114,17 +116,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <Icon className={`w-4 h-4 ${isActive ? 'stroke-[2.5]' : 'stroke-[2]'}`} />
                   <span>{item.label}</span>
                 </div>
-                {item.count !== null && (
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                      isActive
-                        ? 'bg-white/20 text-white'
-                        : 'bg-slate-100 text-slate-500'
-                    }`}
-                  >
-                    {item.count}
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {!isAdmin && requiresAdmin && (
+                    <span
+                      className={`px-1.5 py-0.5 rounded-md text-[9px] font-extrabold flex items-center gap-0.5 ${
+                        isActive ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800 border border-amber-200'
+                      }`}
+                      title="Yêu cầu Admin"
+                    >
+                      <Lock className="w-2.5 h-2.5" />
+                      <span>Admin</span>
+                    </span>
+                  )}
+                  {item.count !== null && (
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                        isActive
+                          ? 'bg-white/20 text-white'
+                          : 'bg-slate-100 text-slate-500'
+                      }`}
+                    >
+                      {item.count}
+                    </span>
+                  )}
+                </div>
               </button>
             );
           })}
